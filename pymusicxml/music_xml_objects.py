@@ -1,5 +1,9 @@
-from collections import MutableSequence, Sequence
-from .utilities import _least_common_multiple, _is_power_of_two, _escape_split
+"""
+Module containing all of the classes representing musical objects.
+"""
+
+from typing import MutableSequence, Sequence, Tuple, Type, Union, Optional
+from ._utilities import _least_common_multiple, _is_power_of_two, _escape_split
 from xml.etree import ElementTree
 from abc import ABC, abstractmethod
 from fractions import Fraction
@@ -12,13 +16,13 @@ import subprocess
 
 # TODO: Make nested printing possible
 
-
 # --------------------------------------------------- Utilities ----------------------------------------------------
 
 
-def _pad_with_rests(components, desired_length):
+def pad_with_rests(components, desired_length):
     """
     Appends rests to a list of components to fill out the desired length
+
     :param components: a list of MusicXMLComponents
     :param desired_length: in quarters
     :return: an expanded list of components
@@ -53,19 +57,32 @@ def _pad_with_rests(components, desired_length):
 
 class MusicXMLComponent(ABC):
 
+    """
+    Abstract base class of all musical objects, providing functionality for rendering and exporting to a file.
+    """
+
     @abstractmethod
-    def render(self):
-        # Renders this component to a tuple of ElementTree.Element
-        # the reason for making it a tuple is that musical objects like chords are represented by several
-        # notes side by side, with all but the first containing a </chord> tag.
+    def render(self) -> Sequence[ElementTree.Element]:
+        """
+        Renders this component to a tuple of ElementTree.Element. (The reason for making it a tuple is that musical
+        objects like chords are represented by several notes side by side, with all but the first containing
+        a </chord> tag.)
+        """
         pass
 
     @abstractmethod
-    def wrap_as_score(self):
-        # Wrap this component in a score so that it can be exported and viewed
+    def wrap_as_score(self) -> 'Score':
+        """
+        Wraps this component in a :class:`Score` so that it can be exported and viewed
+        """
         pass
 
-    def to_xml(self, pretty_print=False):
+    def to_xml(self, pretty_print: bool = False) -> str:
+        """
+        Renders this component to MusicXML, adding a version tag, but not wrapping it up as a full score.
+
+        :param pretty_print: If True, breaks the MusicXML onto multiple lines, with indentation
+        """
         element_rendering = self.render()
 
         if pretty_print:
@@ -77,7 +94,7 @@ class MusicXMLComponent(ABC):
             import re
             return header + ''.join(
                 re.sub(
-                    "<\?xml version.*\?>\n",
+                    r"<\?xml version.*\?>\n",
                     "",
                     minidom.parseString(ElementTree.tostring(element, 'utf-8')).toprettyxml(indent="\t")
                 )
@@ -89,11 +106,23 @@ class MusicXMLComponent(ABC):
                      b'MusicXML 3.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">'
             return (header + b''.join(ElementTree.tostring(element, 'utf-8') for element in element_rendering)).decode()
 
-    def export_to_file(self, file_path, pretty_print=True):
+    def export_to_file(self, file_path: str, pretty_print: bool = True) -> None:
+        """
+        Exports this musical object (wrapped as a score) to the given file path.
+
+        :param file_path: The path of the file we want to write to.
+        :param pretty_print: If True, breaks the MusicXML onto multiple lines, with indentation
+        """
         with open(file_path, 'w') as file:
             file.write(self.wrap_as_score().to_xml(pretty_print))
 
-    def view_in_software(self, command):
+    def view_in_software(self, command: str) -> None:
+        """
+        Uses the given terminal command to create a score out of this musical object, and open it in music
+        notation software.
+
+        :param command: The terminal command corresponding to the software with which we want to open the score.
+        """
         with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as file:
             # Note: For some reason the minified (non-pretty print) version causes MuseScore to spin out and fail
             # This seems to be on MuseScore's end, because there's no difference aside from minification
@@ -103,13 +132,32 @@ class MusicXMLComponent(ABC):
 
 class MusicXMLContainer(MutableSequence):
 
-    def __init__(self, contents, allowed_types):
+    """
+    Base class for all musical objects that contain other musical objects, such as :class:`Part`,
+    :class:`Measure`, and `Tuplet`.
+
+    :param contents: Musical objects to be contained within this object
+    :param allowed_types: Allowable types for objects contained within this object
+    :ivar contents: Musical objects contained within this object
+    :ivar allowed_types: Allowable types for objects contained within this object
+    """
+
+    def __init__(self, contents: Sequence[MusicXMLComponent], allowed_types: Sequence[Type]):
         contents = [] if contents is None else contents
-        assert isinstance(allowed_types, tuple) and all(isinstance(x, type) for x in allowed_types)
-        assert isinstance(contents, Sequence) and all(isinstance(x, allowed_types) for x in contents)
+        self.allowed_types = tuple(allowed_types) if not isinstance(allowed_types, Tuple) else allowed_types
+        if not all(isinstance(x, self.allowed_types) for x in contents):
+            raise ValueError("Contents not of correct type.")
         self.contents = list(contents)
 
-    def insert(self, i, o):
+    def insert(self, i, o) -> None:
+        """
+        Insert the given object before the given index.
+
+        :param i: Index at which to insert
+        :param o: Object to insert
+        """
+        if not isinstance(o, self.allowed_types):
+            raise ValueError("Trying to insert object of incorrect type.")
         self.contents.insert(i, o)
 
     def __getitem__(self, i):
@@ -125,12 +173,72 @@ class MusicXMLContainer(MutableSequence):
         return self.contents.__len__()
 
 
+class DurationalObject(MusicXMLComponent, ABC):
+
+    """
+    Abstract base class for all objects that have duration within a measure.
+    """
+
+    @property
+    @abstractmethod
+    def true_length(self) -> float:
+        """
+        True length in terms of the number of quarter notes, taking into tuplet time modification. Returns 0 in the
+        case of grace notes.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def written_length(self) -> float:
+        """
+        Written length in terms of the number of quarter notes.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def length_in_divisions(self) -> int:
+        """
+        Length in terms of subdivisions. (See description of "divisions" attribute in :class:`Duration`)
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def divisions(self) -> int:
+        """
+        Subdivision used when representing this duration.
+        """
+        pass
+
+    @abstractmethod
+    def min_denominator(self) -> int:
+        """
+        Minimum divisor of a quarter note that would be needed to represent the duration of this note accurately. For
+        instance, a triplet quarter note would have min_denominator 3, since it is 2/3 of a quarter.
+        """
+        pass
+
+
 # --------------------------------------------- Pitch and Duration -----------------------------------------------
 
 
 class Pitch(MusicXMLComponent):
 
-    def __init__(self, step, octave, alteration=0):
+    """
+    Class representing a notated musical pitch.
+
+    :param step: letter name of the pitch ("c", "d", "e", "f", "g", "a" or "b")
+    :param octave: which octave it is in (the octave starting with middle C is octave 4)
+    :param alteration: number of half steps sharp or flat. For instance, 1 would be sharp, -2 would be double-flat,
+        and 0.5 would be quarter-tone sharp.
+    :ivar step: letter name of the pitch ("c", "d", "e", "f", "g", "a" or "b")
+    :ivar octave: octave of the pitch
+    :ivar alteration: number of half steps sharp or flat
+    """
+
+    def __init__(self, step: str, octave: int, alteration: float = 0):
         self.step = step
         self.octave = octave
         self.alteration = alteration
@@ -138,9 +246,10 @@ class Pitch(MusicXMLComponent):
     @classmethod
     def from_string(cls, pitch_string: str):
         """
-        Constructs Pitch from lilypond pitch string or from standard pitch octave notation
+        Constructs Pitch from either a lilypond pitch string or from standard pitch/octave notation
+
         :param pitch_string: can take the form "C#5" (specifying octave with number, and using '#' for sharp) or "cs'"
-        (specifying octave in the lilypond style and using 's' for sharp)
+            (specifying octave in the lilypond style and using 's' for sharp)
         :return: a Pitch
         """
         pitch_string = pitch_string.lower()
@@ -167,7 +276,7 @@ class Pitch(MusicXMLComponent):
                 raise ValueError("Pitch string not understood")
         return cls(step, octave, alteration)
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         pitch_element = ElementTree.Element("pitch")
         step_el = ElementTree.Element("step")
         step_el.text = self.step
@@ -180,7 +289,7 @@ class Pitch(MusicXMLComponent):
         pitch_element.append(octave_el)
         return pitch_element,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Note(self, 1.0).wrap_as_score()
 
     def __eq__(self, other):
@@ -193,9 +302,21 @@ class Pitch(MusicXMLComponent):
                                             ", {}".format(self.alteration) if self.alteration != 0 else "")
 
 
-class Duration(MusicXMLComponent):
+class Duration(DurationalObject):
+    """
+    Represents a length that can be written as a single note or rest.
 
-    length_to_note_type = {
+    :param note_type: written musicXML duration type, e.g. "quarter"
+    :param num_dots: number of duration dots
+    :param tuplet_ratio: One of (a) None, indicating not part of a tuplet (b) a tuple of either
+        (# actual notes, # normal notes) (c) a tuple of (# actual, # normal, note type), e.g. (4, 3, 0.5)
+        for 4 in the space of 3 eighths.
+    :ivar note_type: written musicXML duration type, e.g. quarter
+    :ivar num_dots: number of duration dots
+    :ivar tuplet_ratio: see param definition.
+    """
+
+    _length_to_note_type = {
         8.0: "breve",
         4.0: "whole",
         2.0: "half",
@@ -210,11 +331,11 @@ class Duration(MusicXMLComponent):
         1.0 / 256: "1024th"
     }
 
-    note_type_to_length = {b: a for a, b in length_to_note_type.items()}
+    _note_type_to_length = {b: a for a, b in _length_to_note_type.items()}
 
-    valid_divisors = tuple(4 / x for x in length_to_note_type)
+    _valid_divisors = tuple(4 / x for x in _length_to_note_type)
 
-    note_type_to_num_beams = {
+    _note_type_to_num_beams = {
         "breve": 0,
         "whole": 0,
         "half": 0,
@@ -229,44 +350,67 @@ class Duration(MusicXMLComponent):
         "1024th": 8
     }
 
-    def __init__(self, note_type, num_dots=0, tuplet_ratio=None):
-        """
-        Represents a length that can be written as a single note or rest.
-        :param note_type: written musicXML duration type, e.g. quarter
-        :param num_dots: self-explanatory
-        :param tuplet_ratio: a tuple of either (# actual notes, # normal notes) or (# actual, # normal, note type),
-        e.g. (4, 3, 0.5) for 4 in the space of 3 eighths.
-        """
-        assert note_type in Duration.length_to_note_type.values()
+    def __init__(self, note_type: str, num_dots: int = 0, tuplet_ratio: Tuple = None):
+        assert note_type in Duration._length_to_note_type.values()
         self.note_type = note_type
         self.num_dots = num_dots
         assert isinstance(tuplet_ratio, (type(None), tuple))
         self.tuplet_ratio = tuplet_ratio
-        self.divisions = Fraction(self.true_length).limit_denominator().denominator
+        self._divisions = Fraction(self.true_length).limit_denominator().denominator
+
+    @property
+    def divisions(self) -> int:
+        """
+        In MusicXML, "divisions" is a measure attribute that specifies a smallest metric subdivision for
+        the measure in terms of how many would fit in a quarter note. So if divisions is 8, then a dotted quarter would
+        have duration 12. When we create a duration, divisions is automatically set to the the smallest number with
+        which we could accurately specify this duration. So a dotted quarter note would get set to 2 (since it's three
+        8th notes), and a triplet quarter would get set to 3 (since it's 2/3rds of a quarter note). Later, when we go
+        to render a whole measure, the least common multiple of all of these minimum divisions for all the objects in
+        the measure gets calculated, and the divisions attribute for all the objects gets reset to that.
+        """
+        return self._divisions
+
+    @divisions.setter
+    def divisions(self, value):
+        self._divisions = value
 
     @staticmethod
     def _dot_multiplier(num_dots):
         return (2.0 ** (num_dots + 1) - 1) / 2.0 ** num_dots
 
     @property
-    def written_length(self):
-        return Duration.note_type_to_length[self.note_type] * Duration._dot_multiplier(self.num_dots)
+    def written_length(self) -> float:
+        return Duration._note_type_to_length[self.note_type] * Duration._dot_multiplier(self.num_dots)
 
     @property
-    def true_length(self):
-        # length taking into account tuplet time modification
+    def true_length(self) -> float:
         tuplet_modification = 1 if self.tuplet_ratio is None else float(self.tuplet_ratio[1]) / self.tuplet_ratio[0]
         return self.written_length * tuplet_modification
 
+    def min_denominator(self) -> int:
+        return Fraction(self.true_length).limit_denominator().denominator
+
     @property
-    def length_in_divisions(self):
+    def length_in_divisions(self) -> int:
         return int(round(self.true_length * self.divisions))
 
-    def num_beams(self):
-        return Duration.note_type_to_num_beams[self.note_type]
+    def num_beams(self) -> int:
+        """
+        The number of beams needed to for a note of this duration.
+        """
+        return Duration._note_type_to_num_beams[self.note_type]
 
     @classmethod
-    def from_written_length(cls, written_length, tuplet_ratio=None, max_dots_allowed=4):
+    def from_written_length(cls, written_length: float, tuplet_ratio=None, max_dots_allowed=4):
+        """
+        Constructs a Duration from a written length
+
+        :param written_length: written length in quarter notes
+        :param tuplet_ratio: see description in :class:`Duration` constructor
+        :param max_dots_allowed: The maximum number of dots to allow
+        :raise: ValueError if the given note length is impossible with max_dots_allowed dots or fewer
+        """
         try:
             note_type, num_dots = Duration.get_note_type_and_number_of_dots(written_length, max_dots_allowed)
         except ValueError as err:
@@ -275,16 +419,30 @@ class Duration(MusicXMLComponent):
         return cls(note_type, num_dots, tuplet_ratio)
 
     @classmethod
-    def from_divisor(cls, divisor, num_dots=0, tuplet_ratio=None):
-        assert isinstance(divisor, int) and (4.0 / divisor) in Duration.length_to_note_type, "Bad divisor"
+    def from_divisor(cls, divisor: int, num_dots=0, tuplet_ratio=None):
+        """
+        Constructs a Duration from a divisor
+
+        :param divisor: the number of this duration that fit in a whole note. 4 = quarter note, 8 = 8th note, etc.
+        :param num_dots: see description in :class:`Duration` constructor
+        :param tuplet_ratio: see description in :class:`Duration` constructor
+        """
+        if not (4.0 / divisor) in Duration._length_to_note_type:
+            raise ValueError("Bad divisor")
         return cls.from_written_length(4.0 / divisor * Duration._dot_multiplier(num_dots), tuplet_ratio=tuplet_ratio)
 
     @classmethod
     def from_string(cls, duration_string: str):
-        if duration_string in Duration.note_type_to_length:
+        """
+        Parses various string representations into a Duration
+
+        :param duration_string: Can take a variety of forms, e.g. "dotted eighth", "16."
+        """
+        if duration_string in Duration._note_type_to_length:
             return cls(duration_string)
         elif duration_string.startswith("dotted "):
-            assert duration_string[7:] in Duration.note_type_to_length
+            if not duration_string[7:] in Duration._note_type_to_length:
+                raise ValueError("Bad duration string.")
             return cls(duration_string[7:], 1)
 
         num_dots = 0
@@ -293,26 +451,34 @@ class Duration(MusicXMLComponent):
             num_dots += 1
         try:
             divisor = int(duration_string)
-            assert divisor in Duration.valid_divisors
+            assert divisor in Duration._valid_divisors
         except (ValueError, AssertionError):
             raise ValueError("Bad duration string.")
         return cls.from_divisor(divisor, num_dots=num_dots)
 
     @staticmethod
-    def get_note_type_and_number_of_dots(length, max_dots_allowed=4):
-        if length in Duration.length_to_note_type:
-            return Duration.length_to_note_type[length], 0
+    def get_note_type_and_number_of_dots(length: float, max_dots_allowed: int = 4) -> Tuple[str, int]:
+        """
+        Given a length in quarter notes, get the note type and number of dots.
+
+        :param length: length in quarter notes
+        :param max_dots_allowed: maximum number of dots to allow
+        :raise: ValueError if the given note length is impossible with max_dots_allowed dots or fewer
+        :return: tuple of (note type string, number of dots)
+        """
+        if length in Duration._length_to_note_type:
+            return Duration._length_to_note_type[length], 0
         else:
             dots_multiplier = 1.5
             dots = 1
-            while length / dots_multiplier not in Duration.length_to_note_type:
+            while length / dots_multiplier not in Duration._length_to_note_type:
                 dots += 1
                 dots_multiplier = (2.0 ** (dots + 1) - 1) / 2.0 ** dots
                 if dots > max_dots_allowed:
                     raise ValueError("Duration length of {} does not resolve to single note type.".format(length))
-            return Duration.length_to_note_type[length / dots_multiplier], dots
+            return Duration._length_to_note_type[length / dots_multiplier], dots
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         duration_elements = []
         # specify all the duration-related attributes
         duration_el = ElementTree.Element("duration")
@@ -331,14 +497,17 @@ class Duration(MusicXMLComponent):
             ElementTree.SubElement(time_modification, "actual-notes").text = str(self.tuplet_ratio[0])
             ElementTree.SubElement(time_modification, "normal-notes").text = str(self.tuplet_ratio[1])
             if len(self.tuplet_ratio) > 2:
-                if self.tuplet_ratio[2] not in Duration.length_to_note_type:
+                if self.tuplet_ratio[2] not in Duration._length_to_note_type:
                     raise ValueError("Tuplet normal note type is not a standard power of two length.")
                 ElementTree.SubElement(time_modification, "normal-type").text = \
-                    Duration.length_to_note_type[self.tuplet_ratio[2]]
+                    Duration._length_to_note_type[self.tuplet_ratio[2]]
             duration_elements.append(time_modification)
         return tuple(duration_elements)
 
-    def render_to_beat_unit_tags(self):
+    def render_to_beat_unit_tags(self) -> Sequence[ElementTree.Element]:
+        """
+        Renders the beat unit tags needed in metronome directions.
+        """
         beat_unit_el = ElementTree.Element("beat-unit")
         beat_unit_el.text = self.note_type
         out = (beat_unit_el, )
@@ -346,7 +515,7 @@ class Duration(MusicXMLComponent):
             out += (ElementTree.Element("beat-unit-dot"), )
         return out
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Note("c4", self).wrap_as_score()
 
     def __repr__(self):
@@ -355,63 +524,84 @@ class Duration(MusicXMLComponent):
         )
 
 
-class BarRestDuration(MusicXMLComponent):
+class BarRestDuration(DurationalObject):
 
-    def __init__(self, length):
+    """
+    Special duration object used for bar rests.
+
+    :param length: Length of bar in quarter notes.
+    """
+
+    def __init__(self, length: float):
         self.length = length
-        self.divisions = Fraction(length).limit_denominator().denominator
+        self._divisions = Fraction(length).limit_denominator().denominator
 
     @property
-    def length_in_divisions(self):
+    def written_length(self) -> float:
+        return self.length
+
+    @property
+    def divisions(self) -> int:
+        return self._divisions
+
+    @divisions.setter
+    def divisions(self, value):
+        self._divisions = value
+
+    def min_denominator(self) -> int:
+        return 1
+
+    @property
+    def length_in_divisions(self) -> int:
         return int(round(self.true_length * self.divisions))
 
     @property
-    def true_length(self):
+    def true_length(self) -> float:
         return self.length
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         duration_el = ElementTree.Element("duration")
         duration_el.text = str(int(round(self.length * self.divisions)))
         return duration_el,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return BarRest(self).wrap_as_score()
 
 
 # ---------------------------------------- Note class and all it variations -----------------------------------------
 
 
-class _XMLNote(MusicXMLComponent):
+class _XMLNote(DurationalObject):
+    """
+    Implementation for the xml note element, which includes notes and rests
+
+    :param pitch: a Pitch, or None to indicate a rest, or "bar rest" to indicate that it's a bar rest
+    :param duration: a Duration, or just a float representing the bar length in quarter in the case of "bar rest"
+    :param ties: "start", "continue", "stop", or None
+    :param notations: either a single notation, or a list of notations that will populate the musicXML "notations" tag
+    :param articulations: either a single articulations or a list of articulations that will populate the musicXML
+        "articulations" tag (itself in the "notations" tag).
+    :param notehead: str representing XML notehead type
+    :param beams: a dict of { beam_level (int): beam_type } where beam type is one of ("begin", "continue", "end",
+        "forward hook", "backward hook")
+    :param directions: either a single direction, or a list of directions (e.g. :class:`TextAnnotation`,
+        :class:`MetronomeMark`) to populate the musicXML "directions" tag.
+    :param stemless: boolean for whether to render the note with no stem
+    :param grace: boolean for whether to render the note a grace note with no actual duration, or the string
+        "slashed" if it's a slashed grace note
+    :param is_chord_member: boolean for whether this is a secondary member of a chord (in which case it contains
+        the <chord /> tag
+    :param voice: which voice this note belongs to within its given staff
+    :param staff: which staff this note belongs to within its given part
+    """
 
     def __init__(self, pitch, duration, ties=None, notations=(), articulations=(), notehead=None, beams=None,
                  directions=(), stemless=False, grace=False, is_chord_member=False, voice=None, staff=None):
-        """
-        Implementation for the xml note element, which includes notes and rests
-        :param pitch: a Pitch, or None to indicate a rest, or "bar rest" to indicate that it's a bar rest
-        :param duration: a Duration, or just a float representing the bar length in quarter in the case of "bar rest"
-        :param ties: "start", "continue", "stop", or None
-        :param notations: list for contents of the musicXML "notations" tag
-        :param articulations: list of articulations to go in the musicXML "articulations" tag (itself in "notations")
-        :param notehead: str representing XML notehead type
-        :param beams: a dict of { beam_level (int): beam_type } where beam type is one of ("begin", "continue", "end",
-        "forward hook", "backward hook")
-        :param directions: list of TextAnnotation's / MetronomeMark's / EndDashedLine's. Things that go in the
-        <directions> tag of the resulting musicXML
-        :param stemless: boolean for whether to render the note with no stem
-        :param grace: boolean for whether to render the note a grace note with no actual duration, or the string
-        "slashed" if it's a slashed grace note
-        :param is_chord_member: boolean for whether this is a secondary member of a chord (in which case it contains
-        the <chord /> tag
-        :param voice: which voice this note belongs to within its given staff
-        :param staff: which staff this note belongs to within its given part
-        """
+
         assert not (grace and pitch is None)  # can't have grace rests
         self.pitch = pitch
         assert isinstance(duration, (Duration, BarRestDuration))
         self.duration = duration
-        # self._divisions stores the divisions per quarter note in the case that this is a bar rest and the duration
-        # of the note is a float rather than a Duration object. Otherwise, we just use the "divisions" member of
-        # the self.duration object
         assert ties in ("start", "continue", "stop", None)
         self.ties = ties
         self.notations = list(notations) if isinstance(notations, (list, tuple)) else [notations]
@@ -429,38 +619,41 @@ class _XMLNote(MusicXMLComponent):
         self.staff = staff
 
     @property
-    def true_length(self):
+    def true_length(self) -> float:
         if self.is_grace:
             return 0
         return self.duration.true_length if isinstance(self.duration, Duration) else self.duration
 
     @property
-    def written_length(self):
+    def written_length(self) -> float:
         return self.duration.written_length if isinstance(self.duration, Duration) else self.duration
 
     @property
-    def length_in_divisions(self):
+    def length_in_divisions(self) -> int:
         if self.is_grace:
             return 0
         return self.duration.length_in_divisions
 
     @property
-    def divisions(self):
+    def divisions(self) -> int:
         return self.duration.divisions
 
     @divisions.setter
     def divisions(self, value):
         self.duration.divisions = value
 
-    def min_denominator(self):
+    def min_denominator(self) -> int:
         if self.is_grace:
             return 1
         return Fraction(self.duration.true_length).limit_denominator().denominator
 
-    def num_beams(self):
+    def num_beams(self) -> int:
+        """
+        Returns the number of beams needed to represent this note's duration.
+        """
         return 0 if self.pitch is None else self.duration.num_beams()
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         note_element = ElementTree.Element("note")
 
         # ------------ set pitch and duration attributes ------------
@@ -560,7 +753,7 @@ class _XMLNote(MusicXMLComponent):
         # place any text annotations before the note so that they show up at the same time as the note start
         return sum((direction.render() for direction in self.directions), ()) + (note_element,)
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         if isinstance(self, BarRest):
             duration_as_fraction = Fraction(self.true_length).limit_denominator()
             assert _is_power_of_two(duration_as_fraction.denominator)
@@ -568,13 +761,35 @@ class _XMLNote(MusicXMLComponent):
             return Measure([self], time_signature=time_signature).wrap_as_score()
         else:
             measure_length = 4 if self.true_length <= 4 else int(self.true_length) + 1
-            return Measure(_pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
+            return Measure(pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
 
 
 class Note(_XMLNote):
 
-    def __init__(self, pitch, duration, ties=None, notations=(), articulations=(), notehead=None, directions=(),
-                 stemless=False):
+    """
+    Class representing a single, pitched note.
+
+    :param pitch: either a Pitch object or a string to parse as a pitch (see :func:`Pitch.from_string`)
+    :param duration: either a :class:`Duration` object, a string to parse as a duration (see
+        :func:`Duration.from_string`), or a number of quarter notes.
+    :param ties: one of "start", "continue", "stop", None
+    :param notations: Either a single notation, or a list of notations that will populate the musicXML "notations" tag.
+        Each is either a :class:`Notation` object, an :class:`ElementTree.Element` object, or a string that will be
+        converted into an Element object.
+    :param articulations: Either a single articulations or a list of articulations that will populate the musicXML
+        "articulations" tag (itself in the "notations" tag). Each is either an :class:`ElementTree.Element` object,
+        or a string that will be converted into an Element object.
+    :param notehead: a :class:`Notehead` or a string representing XML notehead type. Note that the default of None
+        represents an ordinary notehead.
+    :param directions: either a single direction, or a list of directions (e.g. :class:`TextAnnotation`,
+        :class:`MetronomeMark`) to populate the musicXML "directions" tag.
+    :param stemless: boolean for whether to render the note with no stem.
+    """
+
+    def __init__(self, pitch: Union[Pitch, str], duration: Union[Duration, str, float], ties: str = None,
+                 notations=(), articulations=(), notehead: Union['Notehead', str] = None,
+                 directions: Sequence['Direction'] = (), stemless: bool = False):
+
         if isinstance(pitch, str):
             pitch = Pitch.from_string(pitch)
         assert isinstance(pitch, Pitch)
@@ -584,7 +799,8 @@ class Note(_XMLNote):
         elif isinstance(duration, Number):
             duration = Duration.from_written_length(duration)
 
-        assert ties in ("start", "continue", "stop", None)
+        if ties not in ("start", "continue", "stop", None):
+            raise ValueError('Ties argument must be one of ("start", "continue", "stop", None)')
 
         assert isinstance(duration, Duration)
         super().__init__(pitch, duration, ties=ties, notations=notations, articulations=articulations,
@@ -592,6 +808,9 @@ class Note(_XMLNote):
 
     @property
     def starts_tie(self):
+        """
+        Whether or not this note starts a tie.
+        """
         return self.ties in ("start", "continue")
 
     @starts_tie.setter
@@ -605,6 +824,9 @@ class Note(_XMLNote):
 
     @property
     def stops_tie(self):
+        """
+        Whether or not this note ends a tie.
+        """
         return self.ties in ("stop", "continue")
 
     @stops_tie.setter
@@ -630,7 +852,18 @@ class Note(_XMLNote):
 
 class Rest(_XMLNote):
 
-    def __init__(self, duration, notations=(), directions=()):
+    """
+    Class representing a notated rest.
+
+    :param duration: either a :class:`Duration` object, a string to parse as a duration (see
+        :func:`Duration.from_string`), or a number of quarter notes.
+    :param notations: see :class:`Note`
+    :param directions: see :class:`Note`
+    """
+
+    def __init__(self, duration: Union[Duration, str, float],
+                 notations: Sequence[Union['Notation', str, ElementTree.Element]] = (),
+                 directions: Sequence['Direction'] = ()):
         if isinstance(duration, str):
             duration = Duration.from_string(duration)
         elif isinstance(duration, Number):
@@ -649,8 +882,16 @@ class Rest(_XMLNote):
 
 class BarRest(_XMLNote):
 
-    def __init__(self, bar_length, directions=()):
-        assert isinstance(bar_length, (Number, Duration, BarRestDuration))
+    """
+    Class representing a bar rest.
+
+    :param bar_length: length of this bar, either as a number, :class:`Duration`, or :class:`BarRestDuration`. Bar rest
+        durations are a little special, since they can be lengths (like 2.5 beats) that are otherwise note notatable
+        in a single note or rest object.
+    :param directions: see :class:`Note`
+    """
+
+    def __init__(self, bar_length: Union[float, Duration, BarRestDuration], directions: Sequence['Direction'] = ()):
         duration = BarRestDuration(bar_length) if isinstance(bar_length, Number) \
             else BarRestDuration(bar_length.true_length) if isinstance(bar_length, Duration) else bar_length
         super().__init__("bar rest", duration, directions=directions)
@@ -665,10 +906,31 @@ class BarRest(_XMLNote):
 # -------------------------------------- Chord (wrapper around multiple Notes) ---------------------------------------
 
 
-class Chord(MusicXMLComponent):
+class Chord(DurationalObject):
 
-    def __init__(self, pitches, duration, ties=None, notations=(), articulations=(), noteheads=None, directions=(),
-                 stemless=False):
+    """
+    Class representing a chord. When rendered to MusicXML, a chord is represented by sequential <note> tags, with all
+    but the first carrying a </chord> tag.
+
+    :param pitches: either a Pitch object or a string to parse as a pitch (see :func:`Pitch.from_string`)
+    :param duration: either a :class:`Duration` object, a string to parse as a duration (see
+        :func:`Duration.from_string`), or a number of quarter notes.
+    :param ties: either one of "start", "continue", "stop", or None (in which case each note of the chord follows
+        that tie indication), or a list of such tie indications, one for each note.
+    :param notations: a notation or list of notations like that passed to a :class:`Note` object. Since this is a
+        chord, it is also possible to include a :class:`StartMultiGliss` or :class:`StopMultiGliss` object.
+    :param articulations: an articulation or list of articulations like that passed to a :class:`Note` object.
+    :param noteheads: Either a single notehead (in the form of a :class:`Notehead` or string representing XML
+        notehead type) or a list of such noteheads, one for each pitch. The former results in all noteheads in the
+        chord being the same; the latter results in different noteheads for each chord member. Note that the default
+        of None represents ordinary noteheads.
+    :param directions: a direction or list of directions like that passed to a :class:`Note` object.
+    :param stemless: boolean for whether to render the chord with no stem.
+    """
+
+    def __init__(self, pitches: Sequence[Union[Pitch, str]], duration: Union[Duration, str, float],
+                 ties: Union[str, Sequence[Optional[str]]] = None, notations=(), articulations=(),
+                 noteheads=None, directions=(), stemless: bool = False):
         assert isinstance(pitches, (list, tuple)) and len(pitches) > 1, "Chord should have multiple notes."
         pitches = [Pitch.from_string(pitch) if isinstance(pitch, str) else pitch for pitch in pitches]
         assert all(isinstance(pitch, Pitch) for pitch in pitches)
@@ -677,7 +939,6 @@ class Chord(MusicXMLComponent):
             duration = Duration.from_string(duration)
         elif isinstance(duration, Number):
             duration = Duration.from_written_length(duration)
-        assert isinstance(duration, Duration)
 
         assert ties in ("start", "continue", "stop", None) or \
                isinstance(ties, (list, tuple)) and len(ties) == len(pitches) and \
@@ -708,6 +969,9 @@ class Chord(MusicXMLComponent):
 
     @property
     def pitches(self):
+        """
+        Tuple of the pitches of the notes in this chord.
+        """
         return tuple(note.pitch for note in self.notes)
 
     @pitches.setter
@@ -717,39 +981,54 @@ class Chord(MusicXMLComponent):
         for note, pitch in zip(self.notes, value):
             note.pitch = pitch
 
-    def num_beams(self):
+    def num_beams(self) -> int:
+        """
+        Returns the number of beams needed to represent this duration.
+        """
         return self.notes[0].num_beams()
 
     @property
     def duration(self):
+        """
+        The :class:`Duration` of this chord.
+        """
         return self.notes[0].duration
 
     @property
-    def true_length(self):
+    def true_length(self) -> float:
         return self.notes[0].true_length
 
     @property
-    def written_length(self):
+    def written_length(self) -> float:
         return self.notes[0].written_length
 
     @property
-    def length_in_divisions(self):
+    def length_in_divisions(self) -> int:
         return self.notes[0].length_in_divisions
 
     @property
-    def notations(self):
+    def notations(self) -> Sequence['Notation']:
+        """
+        Notations attached to this chord.
+        """
         return self.notes[0].notations
 
     @property
-    def articulations(self):
+    def articulations(self) :
+        """
+        Articulations attached to this chord.
+        """
         return self.notes[0].articulations
 
     @property
     def directions(self):
+        """
+        Directions attached to this chord.
+        """
         return self.notes[0].directions
 
     @property
-    def divisions(self):
+    def divisions(self) -> int:
         return self.notes[0].divisions
 
     @divisions.setter
@@ -759,6 +1038,9 @@ class Chord(MusicXMLComponent):
 
     @property
     def voice(self):
+        """
+        Which voice this chord resides in.
+        """
         return self.notes[0].voice
 
     @voice.setter
@@ -768,7 +1050,9 @@ class Chord(MusicXMLComponent):
 
     @property
     def beams(self):
-        # beams are only written into the first note of a chord so we make an alias to that
+        """
+        Dictionary describing the notation of all the beams for this Chord.
+        """
         return self.notes[0].beams
 
     @beams.setter
@@ -777,8 +1061,10 @@ class Chord(MusicXMLComponent):
 
     @property
     def ties(self):
-        # either returns a string representing the tie state of all the notes, if all notes have the same tie state
-        # or returns a tuple representing the tie state of each note individually
+        """
+        Either a string representing the tie state of all the notes, if all notes have the same tie state, or a tuple
+        representing the tie state of each note individually.
+        """
         if all(note.ties == self.notes[0].ties for note in self.notes[1:]):
             return self.notes[0].ties
         else:
@@ -797,21 +1083,24 @@ class Chord(MusicXMLComponent):
 
     @property
     def tuplet_bracket(self):
+        """
+        Whether or not this chord starts or stops a tuplet bracket.
+        """
         return self.notes[0].tuplet_bracket
 
     @tuplet_bracket.setter
     def tuplet_bracket(self, value):
         self.notes[0].tuplet_bracket = value
 
-    def min_denominator(self):
+    def min_denominator(self) -> int:
         return self.notes[0].min_denominator()
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return sum((note.render() for note in self.notes), ())
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         measure_length = 4 if self.true_length <= 4 else int(self.true_length) + 1
-        return Measure(_pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
+        return Measure(pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
 
     def __repr__(self):
         noteheads = None if all(n.notehead is None for n in self.notes) else tuple(n.notehead for n in self.notes)
@@ -830,9 +1119,25 @@ class Chord(MusicXMLComponent):
 
 
 class GraceNote(Note):
+    """
+    Subclass of :class:`Note` representing a durationless grace note.
 
-    def __init__(self, pitch, duration, ties=None, notations=(), articulations=(), notehead=None, directions=(),
-                 stemless=False, slashed=False):
+    :param pitch: see :class:`Note`
+    :param duration: see :class:`Note`. This will be the displayed duration of the note, even though it takes up no
+        metric space in the bar.
+    :param ties: see :class:`Note`
+    :param notations: see :class:`Note`
+    :param articulations: see :class:`Note`
+    :param notations: see :class:`Note`
+    :param articulations: see :class:`Note`
+    :param notehead: see :class:`Note`
+    :param directions: see :class:`Note`
+    :param stemless: see :class:`Note`
+    :param slashed: whether or not this grace note is rendered with a slash.
+    """
+    def __init__(self, pitch: Union[Pitch, str], duration: Union[Duration, str, float], ties: str = None,
+                 notations=(), articulations=(), notehead: Union['Notehead', str] = None,
+                 directions: Sequence['Direction'] = (), stemless: bool = False, slashed=False):
         super().__init__(pitch,  duration, ties=ties, notations=notations, articulations=articulations,
                          notehead=notehead, directions=directions, stemless=stemless)
         self.is_grace = True
@@ -843,9 +1148,26 @@ class GraceNote(Note):
 
 
 class GraceChord(Chord):
+    """
+    Subclass of :class:`Chord` representing a durationless grace chord.
 
-    def __init__(self, pitches, duration, ties=None, notations=(), articulations=(), noteheads=None, directions=(),
-                 stemless=False, slashed=False):
+    :param pitches: see :class:`Chord`
+    :param duration: see :class:`Chord`. This will be the displayed duration of the chord, even though it takes up no
+        metric space in the bar.
+    :param ties: see :class:`Chord`
+    :param notations: see :class:`Chord`
+    :param articulations: see :class:`Chord`
+    :param notations: see :class:`Chord`
+    :param articulations: see :class:`Chord`
+    :param noteheads: see :class:`Chord`
+    :param directions: see :class:`Chord`
+    :param stemless: see :class:`Chord`
+    :param slashed: whether or not this grace chord is rendered with a slash.
+    """
+
+    def __init__(self, pitches: Sequence[Union[Pitch, str]], duration: Union[Duration, str, float],
+                 ties: Union[str, Sequence[Optional[str]]] = None, notations=(), articulations=(),
+                 noteheads=None, directions=(), stemless: bool = False, slashed=False):
         super().__init__(pitches, duration, ties=ties, notations=notations, articulations=articulations,
                          noteheads=noteheads, directions=directions, stemless=stemless)
         for note in self.notes:
@@ -859,12 +1181,21 @@ class GraceChord(Chord):
 # -------------------------------------------------- Note Groups ------------------------------------------------
 
 
-class BeamedGroup(MusicXMLComponent, MusicXMLContainer):
+class BeamedGroup(DurationalObject, MusicXMLContainer):
 
-    def __init__(self, contents=None):
+    """
+    Represents a group of notes/chords/rests joined under a single beam.
+
+    :param contents: a list of notes, chords and rests contained in this group.
+    """
+
+    def __init__(self, contents: Sequence[MusicXMLComponent] = None):
         super().__init__(contents=contents, allowed_types=(Note, Chord, Rest))
 
-    def render_contents_beaming(self):
+    def render_contents_beaming(self) -> None:
+        """
+        Works out all the beaming for the contents of this group. (Sets the "beams" attribute for every element.)
+        """
         for beam_depth in range(1, max(leaf.num_beams() for leaf in self.contents) + 1):
             leaf_start_time = 0
             for i, leaf in enumerate(self.contents):
@@ -892,7 +1223,7 @@ class BeamedGroup(MusicXMLComponent, MusicXMLContainer):
                 leaf.beams = {}
 
     @property
-    def divisions(self):
+    def divisions(self) -> int:
         return self.contents[0].divisions
 
     @divisions.setter
@@ -901,37 +1232,43 @@ class BeamedGroup(MusicXMLComponent, MusicXMLContainer):
             leaf.divisions = value
 
     @property
-    def true_length(self):
+    def true_length(self) -> float:
         return sum(leaf.true_length for leaf in self.contents)
 
     @property
-    def written_length(self):
+    def written_length(self) -> float:
         return sum(leaf.written_length for leaf in self.contents)
 
     @property
-    def length_in_divisions(self):
+    def length_in_divisions(self) -> int:
         return sum(leaf.length_in_divisions for leaf in self.contents)
 
-    def min_denominator(self):
+    def min_denominator(self) -> int:
         return _least_common_multiple(*[n.min_denominator() for n in self.contents])
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         self.render_contents_beaming()
         return sum((leaf.render() for leaf in self.contents), ())
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         measure_length = 4 if self.true_length <= 4 else int(math.ceil(self.true_length))
-        return Measure(_pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
+        return Measure(pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
 
 
 class Tuplet(BeamedGroup):
+    """
+    Represents a tuplet; same as a BeamedGroup, but with a particular time ratio associated with it.
 
-    def __init__(self, contents, ratio):
+    :param contents: a list of notes, chords and rests contained in this group.
+    :param ratio: a tuple representing the tuplet ratio (as described in :class:`Duration`)
+    """
+
+    def __init__(self, contents: Sequence[MusicXMLComponent], ratio: Tuple):
         super().__init__(contents)
         self.ratio = ratio
-        self.set_tuplet_info_for_contents(ratio)
+        self._set_tuplet_info_for_contents(ratio)
 
-    def set_tuplet_info_for_contents(self, ratio):
+    def _set_tuplet_info_for_contents(self, ratio):
         self.contents[0].tuplet_bracket = "start"
         # it would be stupid to have a tuplet that has only one note in it, but we'll cover that case anyway
         self.contents[-1].tuplet_bracket = "stop" if len(self.contents) > 0 else "both"
@@ -943,12 +1280,12 @@ class Tuplet(BeamedGroup):
             else:
                 element.duration.tuplet_ratio = ratio
 
-    def min_denominator(self):
-        self.set_tuplet_info_for_contents(self.ratio)
+    def min_denominator(self) -> int:
+        self._set_tuplet_info_for_contents(self.ratio)
         return _least_common_multiple(*[n.min_denominator() for n in self.contents])
 
-    def render(self):
-        self.set_tuplet_info_for_contents(self.ratio)
+    def render(self) -> Sequence[ElementTree.Element]:
+        self._set_tuplet_info_for_contents(self.ratio)
         return super().render()
 
 
@@ -957,6 +1294,15 @@ class Tuplet(BeamedGroup):
 
 class Clef(MusicXMLComponent):
 
+    """
+    Class representing a musical clef
+
+    :param sign: Whether it is a G, F, or C clef
+    :param line: Which line the clef is centered on
+    :param octaves_transposition: How many octaves up or down the clef transposes
+    """
+
+    #: Dictionary mapping standard clef names to tuple of (clef letter type, clef line)
     clef_name_to_letter_and_line = {
         "treble": ("G", 2),
         "bass": ("F", 4),
@@ -967,19 +1313,28 @@ class Clef(MusicXMLComponent):
         "baritone": ("F", 3)
     }
 
-    def __init__(self, sign, line, octaves_transposition=0):
+    def __init__(self, sign: str, line: int, octaves_transposition: int = 0):
+        sign = sign.upper()
+        if sign not in ("C", "G", "F"):
+            raise ValueError("Clef sign not understood; must be \"C\", \"G\", or \"F\".")
         self.sign = sign
         self.line = str(line)
         self.octaves_transposition = octaves_transposition
 
     @classmethod
-    def from_string(cls, clef_string):
+    def from_string(cls, clef_string: str, octaves_transposition: int = 0):
+        """
+        Constructs a clef from one of the standard names, e.g. treble, bass, alto
+
+        :param clef_string: name of the clef
+        :param octaves_transposition: octaves of transposition up or down to be applied to the clef
+        """
         if clef_string in Clef.clef_name_to_letter_and_line:
-            return cls(*Clef.clef_name_to_letter_and_line[clef_string])
+            return cls(*Clef.clef_name_to_letter_and_line[clef_string], octaves_transposition=octaves_transposition)
         else:
             raise ValueError("Clef name not understood.")
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         clef_element = ElementTree.Element("clef")
         ElementTree.SubElement(clef_element, "sign").text = self.sign
         ElementTree.SubElement(clef_element, "line").text = self.line
@@ -987,14 +1342,29 @@ class Clef(MusicXMLComponent):
             ElementTree.SubElement(clef_element, "clef-octave-change").text = str(self.octaves_transposition)
         return clef_element,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Measure([BarRest(4)], time_signature=(4, 4), clef=self).wrap_as_score()
 
 
 class Measure(MusicXMLComponent, MusicXMLContainer):
+    """
+    Class representing a measure of music, perhaps with multiple voices.
 
-    barline_xml_names = {
-        # the first two are useful aliases; the rest just retain their xml names
+    :param contents: Either a list of Notes / Chords / Rests / Tuplets / BeamedGroups or a list of voices, each of
+        which is a list of Notes / Chords / Rests / Tuplets / BeamedGroups.
+    :param time_signature: in tuple form, e.g. (3, 4) for "3/4"
+    :param clef: either None (for no clef), a Clef object, a string (like "treble"), or a tuple like ("G", 2) to
+        represent the clef letter, the line it lands, and an optional octave transposition as the third parameter
+    :param barline: either None, which means there will be a regular barline, "double", "end", or any of the barline
+        names used in the MusicXML standard.
+    :param staves: for multi-part music, like piano music
+    :param number: which number in the score. Will be set automatically by the containing Part
+    :param directions_with_displacements: this is a way of placing directions at arbitrary positions in the bar.
+        It takes a list of tuples of (direction, position in the bar), where position in the bar is a floating point
+        number of quarter notes.
+    """
+
+    _barline_xml_names = {
         "double": "light-light",
         "end": "light-heavy",
         "regular": "regular",
@@ -1010,20 +1380,10 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         "none": "none"
     }
 
-    def __init__(self, contents=None, time_signature=None, clef=None, barline=None, staves=None, number=1,
-                 directions_with_displacements=()):
-        """
-
-        :param contents: Either a list of Notes / Chords / Rests / Tuplets / BeamedGroups or a list of voices, each of
-        which is a list of Notes / Chords / Rests / Tuplets / BeamedGroups.
-        :param time_signature: in tuple form, e.g. (3, 4) for "3/4"
-        :param clef: either None (for no clef), a Clef object, a string (like "treble"), or a tuple like ("G", 2) to
-        represent the clef letter, the line it lands, and an optional octave transposition as the third parameter
-        :param barline: either None, which means there will be a regular barline, or one of the names defined in the
-        barline_xml_names dictionary.
-        :param staves: for multi-part music, like piano music
-        :param number: which number in the score. Will be set by the containing Part
-        """
+    def __init__(self, contents: Union[Sequence[DurationalObject], Sequence[Sequence[DurationalObject]]] = None,
+                 time_signature: Tuple = None, clef: Union[Clef, str, Tuple] = None, barline: str = None,
+                 staves: str = None, number: int = 1,
+                 directions_with_displacements: Sequence[Tuple['Direction', float]] = ()):
         super().__init__(contents=contents, allowed_types=(Note, Rest, Chord, BarRest, BeamedGroup,
                                                            Tuplet, type(None), Sequence))
         assert hasattr(self.contents, '__len__') and all(
@@ -1039,22 +1399,23 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
             else Clef.from_string(clef) if isinstance(clef, str) \
             else Clef(*clef)
         assert barline is None or isinstance(barline, str) \
-               and barline.lower() in Measure.barline_xml_names, "Barline type not understood"
+               and barline.lower() in Measure._barline_xml_names, "Barline type not understood"
         self.barline = barline
         self.staves = staves
 
-        assert isinstance(directions_with_displacements, (tuple, list)) and \
-               all(isinstance(x, (tuple, list)) and len(x) == 2 and
-                   isinstance(x[0], (MetronomeMark, TextAnnotation, EndDashedLine)) and
-                   isinstance(x[1], Number) for x in directions_with_displacements)
         self.directions_with_displacements = directions_with_displacements
 
     @property
-    def voices(self):
-        # convenience method for putting the voices in a list, since contents is sometimes just a single voice list
+    def voices(self) -> Tuple[Sequence[MusicXMLComponent]]:
+        """
+        Returns a tuple of the voices in this Measure
+        """
         return (self.contents, ) if not isinstance(self.contents[0], (tuple, list, type(None))) else self.contents
 
-    def leaves(self):
+    def leaves(self) -> Sequence[Union[Note, Chord, Rest]]:
+        """
+        Returns a tuple of all to the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups.
+        """
         out = []
         for voice in self.voices:
             if voice is None:  # skip empty voices
@@ -1066,7 +1427,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                     out.append(note_or_group)
         return tuple(out)
 
-    def set_leaf_voices(self):
+    def _set_leaf_voices(self):
         for i, voice in enumerate(self.voices):
             if voice is None:  # skip empty voices
                 continue
@@ -1088,8 +1449,8 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         return _least_common_multiple(*[Fraction(displacement).limit_denominator(256).denominator
                                         for _, displacement in self.directions_with_displacements])
 
-    def render(self):
-        self.set_leaf_voices()
+    def render(self) -> Sequence[ElementTree.Element]:
+        self._set_leaf_voices()
 
         measure_element = ElementTree.Element("measure", {"number": str(self.number)})
 
@@ -1158,11 +1519,11 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         if self.barline is not None:
             barline_el = ElementTree.SubElement(measure_element, "barline", {"location": "right"})
-            ElementTree.SubElement(barline_el, "bar-style").text = Measure.barline_xml_names[self.barline.lower()]
+            ElementTree.SubElement(barline_el, "bar-style").text = Measure._barline_xml_names[self.barline.lower()]
 
         return measure_element,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Part("", [self]).wrap_as_score()
 
 
@@ -1170,54 +1531,80 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
 
 class Part(MusicXMLComponent, MusicXMLContainer):
+    """
+    Represents a musical part/staff.
 
-    def __init__(self, part_name, measures=None, part_id=1):
+    :param part_name: name of this part
+    :param measures: list of measures contained in this part
+    :param part_id: unique identifier for the part (set automatically by the containing Score upon rendering)
+    """
+
+    def __init__(self, part_name: str, measures: Sequence[Measure] = None, part_id: int = 1):
         self.part_id = part_id
         super().__init__(contents=measures, allowed_types=(Measure,))
         self.part_name = part_name
 
     @property
     def measures(self):
+        """
+        List of the measures in this Part.
+        """
         return self.contents
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         part_element = ElementTree.Element("part", {"id": "P{}".format(self.part_id)})
         for i, measure in enumerate(self.measures):
             measure.number = i + 1
             part_element.extend(measure.render())
         return part_element,
 
-    def render_part_list_entry(self):
+    def render_part_list_entry(self) -> Sequence[ElementTree.Element]:
+        """
+        Renders the "score-part" tag for the top of the MusicXML score.
+        """
         score_part_el = ElementTree.Element("score-part", {"id": "P{}".format(self.part_id)})
         ElementTree.SubElement(score_part_el, "part-name").text = self.part_name
         return score_part_el,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Score([self])
 
 
 class PartGroup(MusicXMLComponent, MusicXMLContainer):
+    """
+    Represents a part group (a group of related parts, possible connected by a bracket)
 
-    def __init__(self, parts=None, has_bracket=True, has_group_bar_line=True):
+    :param parts: list of parts contained in this group
+    :param has_bracket: whether or not to place a bracket around the group in the score
+    :param has_group_bar_line: whether or not to have bar lines cut through the entire group
+    """
+
+    def __init__(self, parts: Sequence[Part] = None, has_bracket: bool = True, has_group_bar_line: bool = True):
         super().__init__(contents=parts, allowed_types=(Part,))
         self.has_bracket = has_bracket
         self.has_group_bar_line = has_group_bar_line
 
     @property
-    def parts(self):
+    def parts(self) -> Sequence[Part]:
+        """
+        List of parts in this group.
+        """
         return self.contents
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return sum((part.render() for part in self.parts), ())
 
-    def render_part_list_entry(self):
-        out = [self.render_start_element()]
+    def render_part_list_entry(self) -> Sequence[ElementTree.Element]:
+        """
+        Renders the "part-group" tag and containing "score-part" tags for the top of the MusicXML score.
+        """
+        out = [self._render_start_element()]
         for part in self.parts:
             out.extend(part.render_part_list_entry())
-        out.append(self.render_stop_element())
+        out.append(self._render_stop_element())
         return tuple(out)
 
-    def render_start_element(self):
+    def _render_start_element(self):
         start_element = ElementTree.Element("part-group", {"type": "start"})
         if self.has_bracket:
             ElementTree.SubElement(start_element, "group-symbol").text = "bracket"
@@ -1225,33 +1612,44 @@ class PartGroup(MusicXMLComponent, MusicXMLContainer):
         return start_element
 
     @staticmethod
-    def render_stop_element():
+    def _render_stop_element():
         return ElementTree.Element("part-group", {"type": "stop"})
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Score([self])
 
 
 class Score(MusicXMLComponent, MusicXMLContainer):
 
-    def __init__(self, contents=None, title=None, composer=None):
+    """
+    Class representing a full musical score
+
+    :param contents: list of parts and part groups included in this score
+    :param title: title of the score
+    :param composer: name of the composer
+    """
+
+    def __init__(self, contents: Sequence[Union[Part, PartGroup]] = None, title: str = None, composer: str = None):
         super().__init__(contents=contents, allowed_types=(Part, PartGroup))
         self.title = title
         self.composer = composer
 
     @property
-    def parts(self):
+    def parts(self) -> Sequence[Part]:
+        """
+        Returns a tuple of the parts in this score, expanding out any part groups.
+        """
         return tuple(part for part_or_group in self.contents
                      for part in (part_or_group.parts if isinstance(part_or_group, PartGroup) else (part_or_group, )))
 
-    def set_part_numbers(self):
+    def _set_part_numbers(self):
         next_id = 1
         for part in self.parts:
             part.part_id = next_id
             next_id += 1
 
-    def render(self):
-        self.set_part_numbers()
+    def render(self) -> Sequence[ElementTree.Element]:
+        self._set_part_numbers()
         score_element = ElementTree.Element("score-partwise")
         work_el = ElementTree.SubElement(score_element, "work")
         if self.title is not None:
@@ -1268,7 +1666,7 @@ class Score(MusicXMLComponent, MusicXMLContainer):
             score_element.extend(part_or_part_group.render())
         return score_element,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return self
 
 # -------------------------------- Remaining Details: Noteheads, Notations, Directions --------------------------------
@@ -1276,12 +1674,21 @@ class Score(MusicXMLComponent, MusicXMLContainer):
 
 class Notehead(MusicXMLComponent):
 
+    """
+    Class representing a notehead type.
+
+    :param notehead_name: accepts any of the MusicXML notehead types, possibly preceded by "filled" or "open". So
+        "filled triangle" will create the triangle notehead type with the filled flag set to true.
+    :param filled: whether or not the notehead is filled
+    """
+
+    #: List of valid MusicXML notehead types
     valid_xml_types = ["normal", "diamond", "triangle", "slash", "cross", "x", "circle-x", "inverted triangle",
                        "square", "arrow down", "arrow up", "circled", "slashed", "back slashed", "cluster",
                        "circle dot", "left triangle", "rectangle", "do", "re", "mi", "fa", "fa up", "so",
                        "la", "ti",  "none"]
 
-    def __init__(self, notehead_name: str, filled=None):
+    def __init__(self, notehead_name: str, filled: bool = None):
         notehead_name = notehead_name.strip().lower()
         if "filled " in notehead_name:
             filled = "yes"
@@ -1294,12 +1701,12 @@ class Notehead(MusicXMLComponent):
         assert filled in (None, "yes", "no", True, False)
         self.filled = "yes" if filled in ("yes", True) else "no" if filled in ("no", False) else None
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         notehead_el = ElementTree.Element("notehead", {"filled": self.filled} if self.filled is not None else {})
         notehead_el.text = self.notehead_name
         return notehead_el,
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Note("c5", 1, notehead=self).wrap_as_score()
 
     def __repr__(self):
@@ -1309,96 +1716,136 @@ class Notehead(MusicXMLComponent):
 
 class Notation(MusicXMLComponent):
 
+    """Abstract base class for MusicXML Notations (e.g. glissandi, slurs)"""
+
     @abstractmethod
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         pass
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Note("c5", 1, notations=(self, )).wrap_as_score()
 
 
 class StartGliss(Notation, ElementTree.Element):
 
-    def __init__(self, number=1):
+    """
+    Notation to attach to a note that starts a glissando
+
+    :param number: each glissando is given an id number to distinguish it from other glissandi.
+    """
+
+    def __init__(self, number: int = 1):
         super().__init__("slide", {"type": "start", "line-type": "solid", "number": str(number)})
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return self,
 
 
 class StopGliss(Notation, ElementTree.Element):
 
-    def __init__(self, number=1):
+    """
+    Notation to attach to a note that ends a glissando
+
+    :param number: this should correspond to the id number of the associated :class:`StartGliss`.
+    """
+
+    def __init__(self, number: int = 1):
         super().__init__("slide", {"type": "stop", "line-type": "solid", "number": str(number)})
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return self,
 
 
 class StartMultiGliss(Notation):
 
-    def __init__(self, numbers=(1,)):
-        """
-        Multi-gliss notation used for glissing multiple members of a chord
-        :param numbers: most natural is to pass a range object here, for the range of numbers to assign to the glisses
+    """
+    Multi-gliss notation used for glissing multiple members of a chord
+
+    :param numbers: most natural is to pass a range object here, for the range of numbers to assign to the glisses
         of consecutive chord member. However, in the case of a chord where, say, you want the upper two notes to
         gliss but not the bottom, pass (None, 1, 2) to this parameter.
-        """
+    """
+
+    def __init__(self, numbers: Sequence[int] = (1,)):
         self.numbers = numbers
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return tuple(StartGliss(n) if n is not None else None for n in self.numbers)
 
 
 class StopMultiGliss(Notation):
 
-    def __init__(self, numbers=(1,)):
+    """
+    End of a multi-gliss notation used for glissing multiple members of a chord.
+
+    :param numbers: These should correspond to the id numbers of the associated :class:`StartMultiGliss`.
+    """
+
+    def __init__(self, numbers: Sequence[int] = (1,)):
         self.numbers = numbers
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return tuple(StopGliss(n) if n is not None else None for n in self.numbers)
 
 
 class StartSlur(Notation, ElementTree.Element):
 
-    def __init__(self, number=1):
+    """
+    Notation to attach to a note that starts a slur
+
+    :param number: each slur is given an id number to distinguish it from other slurs.
+    """
+
+    def __init__(self, number: int = 1):
         super().__init__("slur", {"type": "start", "number": str(number)})
 
-    def render(self):
-        return self,
-
-
-class ContinueSlur(Notation, ElementTree.Element):
-
-    def __init__(self, number=1):
-        super().__init__("slur", {"type": "continue", "number": str(number)})
-
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return self,
 
 
 class StopSlur(Notation, ElementTree.Element):
 
-    def __init__(self, number=1):
+    """
+    Notation to attach to a note that ends a slut
+
+    :param number: this should correspond to the id number of the associated :class:`StartSlur`.
+    """
+
+    def __init__(self, number: int = 1):
         super().__init__("slur", {"type": "stop", "number": str(number)})
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         return self,
 
 
 class Direction(MusicXMLComponent):
 
+    """
+    Abstract base class for musical directions, such as text and metronome marks.
+    """
+
     @abstractmethod
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         pass
 
-    def wrap_as_score(self):
+    def wrap_as_score(self) -> 'Score':
         return Measure([BarRest(4, directions=(self, ))], time_signature=(4, 4)).wrap_as_score()
 
 
 class MetronomeMark(Direction):
 
-    def __init__(self, beat_length, bpm, voice=1, staff=1, **other_attributes):
+    """
+    Class representing a tempo-specifying metronome mark
+
+    :param beat_length: length, in quarters, of the note that takes the beat
+    :param bpm: beats per minute
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    :param other_attributes: any other attributes to assign to the metronome mark, e.g. parentheses="yes" or
+        font_size="5"
+    """
+
+    def __init__(self, beat_length: float, bpm: float, voice: int = 1, staff: int = 1, **other_attributes):
         try:
             self.beat_unit = Duration.from_written_length(beat_length)
         except ValueError:
@@ -1410,7 +1857,7 @@ class MetronomeMark(Direction):
         self.voice = voice
         self.staff = staff
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         direction_element = ElementTree.Element("direction")
         type_el = ElementTree.SubElement(direction_element, "direction-type")
         metronome_el = ElementTree.SubElement(type_el, "metronome", self.other_attributes)
@@ -1423,10 +1870,23 @@ class MetronomeMark(Direction):
 
 
 class TextAnnotation(Direction):
+    """
+    Class representing text that is attached to the staff
 
-    def __init__(self, text, placement="above", font_size=None, italic=False, voice=1, staff=None,
-                 dashed_line=None, **kwargs):
-        # any extra properties of the musicXML "words" tag aside from font-size and italics can be passed to kwargs
+    :param text: the text of the annotation
+    :param placement: where to place the text in relation to the staff ("above" or "below")
+    :param font_size: the font size of the text
+    :param italic: whether or not the text is italicized
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    :param dashed_line: if this text starts a dashed line (e.g. accel--------) pass an id number to associate with
+        that line to this argument. The line can then be ended with an :class:`EndDashedLine`
+    :param kwargs: any extra properties of the musicXML "words" tag aside from font-size and italics can be
+        passed to kwargs
+    """
+
+    def __init__(self, text: str, placement: str = "above", font_size: float = None, italic: bool = False,
+                 voice: int = 1, staff: int = None, dashed_line: int = None, **kwargs):
         self.text = text
         self.placement = placement
         self.text_properties = kwargs
@@ -1439,7 +1899,7 @@ class TextAnnotation(Direction):
         self.voice = voice
         self.staff = staff
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         direction_element = ElementTree.Element("direction", {"placement": self.placement})
         type_el = ElementTree.SubElement(direction_element, "direction-type")
         ElementTree.SubElement(type_el, "words", self.text_properties).text = self.text
@@ -1454,12 +1914,19 @@ class TextAnnotation(Direction):
 
 class EndDashedLine(Direction):
 
+    """
+    Class used to mark the end of a dashed line starting from a :class:`TextAnnotation`.
+
+    :param id_number: the number associated with the line when the :class:`TextAnnotation` was created
+    :param voice: should be the same as the associated :class:`TextAnnotation`.
+    :param staff: should be the same as the associated :class:`TextAnnotation`.
+    """
     def __init__(self, id_number=1, voice=1, staff=None):
         self.id_number = id_number
         self.voice = voice
         self.staff = staff
 
-    def render(self):
+    def render(self) -> Sequence[ElementTree.Element]:
         direction_element = ElementTree.Element("direction")
         dash_type_el = ElementTree.SubElement(direction_element, "direction-type")
         ElementTree.SubElement(dash_type_el, "dashes", {"number": str(self.id_number), "type": "stop"})
