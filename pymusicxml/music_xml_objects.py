@@ -2,7 +2,7 @@
 Module containing all of the classes representing musical objects.
 """
 
-from typing import MutableSequence, Sequence, Tuple, Type, Union, Optional
+from typing import MutableSequence, Sequence, Tuple, Type, Union, Optional, Iterator
 from ._utilities import _least_common_multiple, _is_power_of_two, _escape_split
 from xml.etree import ElementTree
 from abc import ABC, abstractmethod
@@ -12,6 +12,8 @@ import math
 import datetime
 import tempfile
 import subprocess
+from copy import deepcopy
+import logging
 
 
 # TODO: Make nested printing possible
@@ -622,7 +624,7 @@ class _XMLNote(DurationalObject):
     def true_length(self) -> float:
         if self.is_grace:
             return 0
-        return self.duration.true_length if isinstance(self.duration, Duration) else self.duration
+        return self.duration.true_length if isinstance(self.duration, (Duration, BarRestDuration)) else self.duration
 
     @property
     def written_length(self) -> float:
@@ -732,9 +734,16 @@ class _XMLNote(DurationalObject):
             notations_el = ElementTree.Element("notations")
             for notation in self.notations:
                 if isinstance(notation, ElementTree.Element):
+                    # if it's already an element, just append it directly
                     notations_el.append(notation)
-                else:
+                elif isinstance(notation, Notation):
+                    # otherwise, if it's a Notation object, then render and append it
+                    notations_el.extend(notation.render())
+                elif isinstance(notation, str):
+                    # otherwise, if it's a string, just make a simple element out of it and append
                     notations_el.append(ElementTree.Element(notation))
+                else:
+                    logging.warning("Notation {} not understood".format(notation))
 
             if self.tuplet_bracket in ("start", "both"):
                 notations_el.append(ElementTree.Element("tuplet", {"type": "start"}))
@@ -1412,20 +1421,45 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         """
         return (self.contents, ) if not isinstance(self.contents[0], (tuple, list, type(None))) else self.contents
 
-    def leaves(self) -> Sequence[Union[Note, Chord, Rest]]:
+    def iter_leaves(self, which_voices=None) -> Iterator[Union[Note, Chord, Rest]]:
         """
-        Returns a tuple of all to the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups.
+        Iterates through the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups. The
+        notes/chords/rests are ordered in time, and draw from the specified voices.
+
+        :param which_voices: List of voices to return notes from (numbered 0, 1, 2, 3). The default value of None
+            returns notes from all voices.
         """
-        out = []
-        for voice in self.voices:
-            if voice is None:  # skip empty voices
-                continue
-            for note_or_group in voice:
-                if isinstance(note_or_group, (BeamedGroup, Tuplet)):
-                    out.extend(note_or_group.contents)
-                else:
-                    out.append(note_or_group)
-        return tuple(out)
+        # make a copy of the voice list, but with any beam groups or tuplets unraveled
+        voice_list_copy = []
+        for i, v in enumerate(self.voices):
+            if (which_voices is None or i in which_voices) and v is not None:
+                voice_list_copy.append([])
+                for note_or_group in v:
+                    if isinstance(note_or_group, (BeamedGroup, Tuplet)):
+                        voice_list_copy[-1].extend(note_or_group.contents)
+                    else:
+                        voice_list_copy[-1].append(note_or_group)
+        # now iteratively yield the next earliest note (choosing the shortest in the case of a tie)
+        next_note_beats = [0] * len(voice_list_copy)
+        while len(voice_list_copy) > 0:
+            voice_to_pop = min(range(len(next_note_beats)),
+                               key=lambda k: (next_note_beats[k], voice_list_copy[k][0].true_length))
+            popped_note = voice_list_copy[voice_to_pop].pop(0)
+            next_note_beats[voice_to_pop] += popped_note.true_length
+            yield popped_note
+            if len(voice_list_copy[voice_to_pop]) == 0:
+                voice_list_copy.pop(voice_to_pop)
+                next_note_beats.pop(voice_to_pop)
+
+    def leaves(self, which_voices=None) -> Sequence[Union[Note, Chord, Rest]]:
+        """
+        Returns a tuple of all to the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups. The
+        notes/chords/rests are ordered in time, and draw from the specified voices.
+
+        :param which_voices: List of voices to return notes from (numbered 0, 1, 2, 3). The default value of None
+            returns notes from all voices.
+        """
+        return tuple(self.iter_leaves(which_voices))
 
     def _set_leaf_voices(self):
         for i, voice in enumerate(self.voices):
@@ -1545,18 +1579,66 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         self.part_name = part_name
 
     @property
-    def measures(self):
+    def measures(self) -> Sequence['Measure']:
         """
         List of the measures in this Part.
         """
         return self.contents
 
+    def iter_leaves(self, which_voices=None) -> Iterator[Union[Note, Chord, Rest]]:
+        """
+        Iterates through the Notes/Chords/Rests in this part, expanding out any measures, tuplets and beam groups. The
+        notes/chords/rests are ordered in time, and draw from the specified voices.
+
+        :param which_voices: List of voices to return notes from (numbered 0, 1, 2, 3). The default value of None
+            returns notes from all voices.
+        """
+        for measure in self.measures:
+            for leaf in measure.iter_leaves(which_voices):
+                yield leaf
+
     def render(self) -> Sequence[ElementTree.Element]:
-        part_element = ElementTree.Element("part", {"id": "P{}".format(self.part_id)})
-        for i, measure in enumerate(self.measures):
+        part_copy = deepcopy(self)
+        Part._validate_slur_numbers(part_copy)
+        part_element = ElementTree.Element("part", {"id": "P{}".format(part_copy.part_id)})
+        for i, measure in enumerate(part_copy.measures):
             measure.number = i + 1
             part_element.extend(measure.render())
         return part_element,
+
+    @staticmethod
+    def _validate_slur_numbers(part: 'Part'):
+        """
+        Redoes all the slur numbers so that they are integers from 1-6 in accordance with the MusicXML number-level
+        type. We want to be able to assign any number to the slur (since keeping track of which numbers are available
+        is a pain), and then adapt the numbers on export.
+
+        :param part: the part whose slur numbers to validate
+        """
+        # keep a dict of which input ids are associated with which output numbers
+        input_to_output_numbers = {}
+        for note_chord_rest in part.iter_leaves():
+            for notation in note_chord_rest.notations:
+                if isinstance(notation, StartSlur):
+                    available_slur_numbers = [x for x in range(1, 7)
+                                              if x not in sum(input_to_output_numbers.values(), [])]
+                    if notation.slur_id in available_slur_numbers:
+                        available_slur_numbers.remove(notation.slur_id)
+                        input_to_output_numbers.setdefault(notation.slur_id, []).append(notation.slur_id)
+                    elif len(available_slur_numbers) > 0:
+                        output_num = available_slur_numbers[0]
+                        input_to_output_numbers.setdefault(notation.slur_id, []).append(output_num)
+                        notation.slur_id = output_num
+                    else:
+                        logging.warning("Ran out of available slur numbers; too many simultaneous slurs.")
+                elif isinstance(notation, StopSlur):
+                    if notation.slur_id in input_to_output_numbers:
+                        output_num = input_to_output_numbers[notation.slur_id].pop(0)
+                        if len(input_to_output_numbers[notation.slur_id]) == 0:
+                            del input_to_output_numbers[notation.slur_id]
+                        notation.slur_id = output_num
+                    else:
+                        logging.warning("Tried to stop slur that was never started.")
 
     def render_part_list_entry(self) -> Sequence[ElementTree.Element]:
         """
@@ -1788,34 +1870,36 @@ class StopMultiGliss(Notation):
         return tuple(StopGliss(n) if n is not None else None for n in self.numbers)
 
 
-class StartSlur(Notation, ElementTree.Element):
+class StartSlur(Notation):
 
     """
     Notation to attach to a note that starts a slur
 
-    :param number: each slur is given an id number to distinguish it from other slurs.
+    :param slur_id: each slur is given an id to distinguish it from other slurs. In the MusicXML standard, this is a
+        number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance, a string). These
+        ids are then converted to numbers on export.
     """
 
-    def __init__(self, number: int = 1):
-        super().__init__("slur", {"type": "start", "number": str(number)})
+    def __init__(self, slur_id=1):
+        self.slur_id = slur_id
 
     def render(self) -> Sequence[ElementTree.Element]:
-        return self,
+        return ElementTree.Element("slur", {"type": "start", "number": str(self.slur_id)}),
 
 
-class StopSlur(Notation, ElementTree.Element):
+class StopSlur(Notation):
 
     """
-    Notation to attach to a note that ends a slut
+    Notation to attach to a note that ends a slur
 
-    :param number: this should correspond to the id number of the associated :class:`StartSlur`.
+    :param slur_id: this should correspond to the slur id of the associated :class:`StartSlur`.
     """
 
-    def __init__(self, number: int = 1):
-        super().__init__("slur", {"type": "stop", "number": str(number)})
+    def __init__(self, slur_id=1):
+        self.slur_id = slur_id
 
     def render(self) -> Sequence[ElementTree.Element]:
-        return self,
+        return ElementTree.Element("slur", {"type": "stop", "number": str(self.slur_id)}),
 
 
 class Direction(MusicXMLComponent):
