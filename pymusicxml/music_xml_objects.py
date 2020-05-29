@@ -1798,7 +1798,7 @@ class Notehead(MusicXMLComponent):
 
 class Notation(MusicXMLComponent):
 
-    """Abstract base class for MusicXML Notations (e.g. glissandi, slurs)"""
+    """Abstract base class for MusicXML Notations (glissandi, slurs)."""
 
     @abstractmethod
     def render(self) -> Sequence[ElementTree.Element]:
