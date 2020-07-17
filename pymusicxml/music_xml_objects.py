@@ -125,7 +125,7 @@ class MusicXMLComponent(ABC):
 
         :param command: The terminal command corresponding to the software with which we want to open the score.
         """
-        with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as file:
+        with tempfile.NamedTemporaryFile(suffix=".musicxml", delete=False) as file:
             # Note: For some reason the minified (non-pretty print) version causes MuseScore to spin out and fail
             # This seems to be on MuseScore's end, because there's no difference aside from minification
             file.write(self.wrap_as_score().to_xml(pretty_print=True).encode())
@@ -1942,7 +1942,7 @@ class MetronomeMark(Direction):
         self.staff = staff
 
     def render(self) -> Sequence[ElementTree.Element]:
-        direction_element = ElementTree.Element("direction")
+        direction_element = ElementTree.Element("direction", {"placement": "above"})
         type_el = ElementTree.SubElement(direction_element, "direction-type")
         metronome_el = ElementTree.SubElement(type_el, "metronome", self.other_attributes)
         metronome_el.extend(self.beat_unit.render_to_beat_unit_tags())

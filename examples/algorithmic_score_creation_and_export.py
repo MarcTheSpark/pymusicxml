@@ -25,4 +25,4 @@ for i in range(20):
     
 part.extend(measures)
 
-score.export_to_file("AlgorithmicExample.xml")
+score.export_to_file("AlgorithmicExample.musicxml")
