@@ -1,5 +1,5 @@
 # pymusicxml
 
-_pymusicxml_ is a simple python library for exporting (and perhaps in the future, importing) MusicXML. It is part of [scamp](https://github.com/MarcTheSpark/scamp/), a Suite for Computer-Assisted Music in Python.
+_pymusicxml_ is a simple python library for exporting (and perhaps in the future, importing) MusicXML. It is part of [scamp](https://sr.ht/~marcevanstein/scamp/), a Suite for Computer-Assisted Music in Python.
 
 See the examples folder for an example of an explicitly created and exported score, as well as an algorithmically created and exported score.

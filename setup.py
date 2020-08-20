@@ -27,7 +27,7 @@ setuptools.setup(
     description="A simple python library for exporting MusicXML",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/MarcTheSpark/pymusicxml",
+    url="https://git.sr.ht/~marcevanstein/pymusicxml",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
