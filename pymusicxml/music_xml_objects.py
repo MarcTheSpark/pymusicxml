@@ -1986,7 +1986,7 @@ class TextAnnotation(Direction):
     """
 
     def __init__(self, text: str, placement: str = "above", font_size: float = None, italic: bool = False,
-                 voice: int = 1, staff: int = None, dashed_line: int = None, **kwargs):
+                 bold: bool = False, voice: int = 1, staff: int = None, dashed_line: int = None, **kwargs):
         self.text = text
         self.placement = placement
         self.text_properties = kwargs
@@ -1994,6 +1994,8 @@ class TextAnnotation(Direction):
             self.text_properties["font-size"] = font_size
         if italic:
             self.text_properties["font-style"] = "italic"
+        if bold:
+            self.text_properties["font-weight"] = "bold"
         # by default, pass an integer to dashed_line to give it an id number. But if it's just True, set id to 1
         self.dashed_line = 1 if dashed_line is True else dashed_line
         self.voice = voice
