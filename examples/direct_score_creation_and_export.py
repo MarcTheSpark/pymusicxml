@@ -76,7 +76,7 @@ Score([
                 BeamedGroup([
                     Rest(0.5),
                     Note("d4", 0.5, notehead="open mi", notations=[StartGliss(1), StartSlur()]),
-                    Note("Eb4", 0.5, notations=[StopGliss(1), StartGliss(2), ContinueSlur()]),
+                    Note("Eb4", 0.5, notations=[StopGliss(1), StartGliss(2)]),
                     Note("F4", 0.5, notations=[StopGliss(2), StopSlur()]),
                 ]),
                 Note("Eb4", 2.0)

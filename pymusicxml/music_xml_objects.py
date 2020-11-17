@@ -19,7 +19,7 @@ Module containing all of the classes representing musical objects.
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
 from typing import MutableSequence, Sequence, Tuple, Type, Union, Optional, Iterator
-from ._utilities import _least_common_multiple, _is_power_of_two, _escape_split
+from ._utilities import _least_common_multiple, _is_power_of_two, _escape_split, get_average_square_correlation
 from xml.etree import ElementTree
 from abc import ABC, abstractmethod
 from fractions import Fraction
@@ -1589,6 +1589,39 @@ class Part(MusicXMLComponent, MusicXMLContainer):
     :param part_id: unique identifier for the part (set automatically by the containing Score upon rendering)
     """
 
+    general_midi_preset_nums = {
+        # Official names
+        'Acoustic Grand Piano': 1, 'Bright Acoustic Piano': 2, 'Electric Grand Piano': 3, 'Honky-tonk Piano': 4,
+        'Electric Piano 1': 5, 'Electric Piano 2': 6, 'Harpsichord': 7, 'Clavinet': 8, 'Celesta': 9,
+        'Glockenspiel': 10, 'Music Box': 11, 'Vibraphone': 12, 'Marimba': 13, 'Xylophone': 14, 'Tubular Bells': 15,
+        'Dulcimer': 16, 'Drawbar Organ': 17, 'Percussive Organ': 18, 'Rock Organ': 19, 'Church Organ': 20,
+        'Reed Organ': 21, 'Accordion': 22, 'Harmonica': 23, 'Tango Accordion': 24, 'Acoustic Guitar (nylon)': 25,
+        'Acoustic Guitar (steel)': 26, 'Electric Guitar (jazz)': 27, 'Electric Guitar (clean)': 28,
+        'Electric Guitar (muted)': 29, 'Overdriven Guitar': 30, 'Distortion Guitar': 31, 'Guitar harmonics': 32,
+        'Acoustic Bass': 33, 'Electric Bass (finger)': 34, 'Electric Bass (pick)': 35, 'Fretless Bass': 36,
+        'Slap Bass 1': 37, 'Slap Bass 2': 38, 'Synth Bass 1': 39, 'Synth Bass 2': 40, 'Violin': 41, 'Viola': 42,
+        'Cello': 43, 'Contrabass': 44, 'Tremolo Strings': 45, 'Pizzicato Strings': 46, 'Orchestral Harp': 47,
+        'Timpani': 48, 'String Ensemble 1': 49, 'String Ensemble 2': 50, 'Synth Strings 1': 51, 'Synth Strings 2': 52,
+        'Choir Aahs': 53, 'Voice Oohs': 54, 'Synth Voice': 55, 'Orchestra Hit': 56, 'Trumpet': 57, 'Trombone': 58,
+        'Tuba': 59, 'Muted Trumpet': 60, 'French Horn': 61, 'Brass Section': 62, 'Synth Brass 1': 63,
+        'Synth Brass 2': 64, 'Soprano Sax': 65, 'Alto Sax': 66, 'Tenor Sax': 67, 'Baritone Sax': 68, 'Oboe': 69,
+        'English Horn': 70, 'Bassoon': 71, 'Clarinet': 72, 'Piccolo': 73, 'Flute': 74, 'Recorder': 75, 'Pan Flute': 76,
+        'Blown Bottle': 77, 'Shakuhachi': 78, 'Whistle': 79, 'Ocarina': 80, 'Lead 1 (square)': 81,
+        'Lead 2 (sawtooth)': 82, 'Lead 3 (calliope)': 83, 'Lead 4 (chiff)': 84, 'Lead 5 (charang)': 85,
+        'Lead 6 (voice)': 86, 'Lead 7 (fifths)': 87, 'Lead 8 (bass + lead)': 88, 'Pad 1 (new age)': 89,
+        'Pad 2 (warm)': 90, 'Pad 3 (polysynth)': 91, 'Pad 4 (choir)': 92, 'Pad 5 (bowed)': 93, 'Pad 6 (metallic)': 94,
+        'Pad 7 (halo)': 95, 'Pad 8 (sweep)': 96, 'FX 1 (rain)': 97, 'FX 2 (soundtrack)': 98, 'FX 3 (crystal)': 99,
+        'FX 4 (atmosphere)': 100, 'FX 5 (brightness)': 101, 'FX 6 (goblins)': 102, 'FX 7 (echoes)': 103,
+        'FX 8 (sci-fi)': 104, 'Sitar': 105, 'Banjo': 106, 'Shamisen': 107, 'Koto': 108, 'Kalimba': 109,
+        'Bag pipe': 110, 'Fiddle': 111, 'Shanai': 112, 'Tinkle Bell': 113, 'Agogo': 114, 'Steel Drums': 115,
+        'Woodblock': 116, 'Taiko Drum': 117, 'Melodic Tom': 118, 'Synth Drum': 119, 'Reverse Cymbal': 120,
+        'Guitar Fret Noise': 121, 'Breath Noise': 122, 'Seashore': 123, 'Bird Tweet': 124, 'Telephone Ring': 125,
+        'Helicopter': 126, 'Applause': 127, 'Gunshot': 128,
+        # Some additional name simplifications and defaults
+        'Piano': 1, 'Bells': 15, 'Harp': 47, 'Horn': 61, 'Organ': 20, 'Sax': 66, 'Strings': 49, 'Violoncello': 43,
+        'Tom': 118
+    }
+
     def __init__(self, part_name: str, measures: Sequence[Measure] = None, part_id: int = 1):
         self.part_id = part_id
         super().__init__(contents=measures, allowed_types=(Measure,))
@@ -1662,7 +1695,34 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         """
         score_part_el = ElementTree.Element("score-part", {"id": "P{}".format(self.part_id)})
         ElementTree.SubElement(score_part_el, "part-name").text = self.part_name
+
+        preset = Part._get_midi_preset(self.part_name)
+        if preset is not None:
+            name, num = preset
+            score_instrument_el = ElementTree.SubElement(score_part_el, "score-instrument",
+                                                         {"id": "P{}-I1".format(self.part_id)})
+            ElementTree.SubElement(score_instrument_el, "instrument-name").text = name
+            midi_instrument_el = ElementTree.SubElement(score_part_el, "midi-instrument",
+                                                        {"id": "P{}-I1".format(self.part_id)})
+            ElementTree.SubElement(midi_instrument_el, "midi-program").text = str(num)
         return score_part_el,
+
+    @staticmethod
+    def _get_midi_preset(instrument_name):
+        best_preset_match = None
+        best_preset_score = 0
+        altered_name = instrument_name.lower().strip()
+        for gm_name in Part.general_midi_preset_nums:
+            score = get_average_square_correlation(altered_name, gm_name.lower())
+            if score > best_preset_score:
+                best_preset_score = score
+                best_preset_match = gm_name
+        if best_preset_score > 1.5:
+            # threshold for a close enough name match
+            return best_preset_match, Part.general_midi_preset_nums[best_preset_match]
+        else:
+            # no good match
+            return None
 
     def wrap_as_score(self) -> 'Score':
         return Score([self])

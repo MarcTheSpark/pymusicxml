@@ -51,3 +51,21 @@ def _escape_split(s, delimiter):
             continue  # add more to buf
         res.append(buf + s[i:j - d])
         i, buf = j + len(delimiter), ''  # start after delim
+
+
+def get_average_square_correlation(test_string: str, template_string: str) -> float:
+    """
+    A test of the similarity of two strings via a (squared) cross-correlation of their characters.
+    (Scaled down to compensate for the influence of string lengths.)
+
+    :param test_string: string we are testing
+    :param template_string: template string we are testing against
+    """
+    square_correlation_sum = 0
+    test_length, template_length = len(test_string), len(template_string)
+    for offset in range(-test_length + 1, template_length):
+        test_string_segment = test_string[max(0, -offset): template_length - offset]
+        template_string_segment = template_string[max(0, offset): max(0, offset) + len(test_string_segment)]
+        correlation_score = sum(a == b for a, b in zip(test_string_segment, template_string_segment))
+        square_correlation_sum += correlation_score ** 2
+    return square_correlation_sum / (test_length + template_length)
