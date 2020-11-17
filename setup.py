@@ -21,7 +21,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pymusicxml",
-    version="0.3.5",
+    version="0.3.6",
     author="Marc Evanstein",
     author_email="marc@marcevanstein.com",
     description="A simple python library for exporting MusicXML",

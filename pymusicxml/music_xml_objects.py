@@ -1587,6 +1587,10 @@ class Part(MusicXMLComponent, MusicXMLContainer):
     :param part_name: name of this part
     :param measures: list of measures contained in this part
     :param part_id: unique identifier for the part (set automatically by the containing Score upon rendering)
+    :param instrument_name: used by notation programs to understand which sound to use; not rendered in score. Set
+        automatically based on part name if left as None.
+    :param midi_program_num: the general midi program number for the instrument. Again, used by notation programs
+        to pick an instrument sound. Set automatically based on part name if left as None.
     """
 
     general_midi_preset_nums = {
@@ -1622,10 +1626,13 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         'Tom': 118
     }
 
-    def __init__(self, part_name: str, measures: Sequence[Measure] = None, part_id: int = 1):
+    def __init__(self, part_name: str, measures: Sequence[Measure] = None, part_id: int = 1,
+                 instrument_name: str = None, midi_program_num: int = None):
         self.part_id = part_id
         super().__init__(contents=measures, allowed_types=(Measure,))
         self.part_name = part_name
+        self.instrument_name = instrument_name
+        self.midi_program = midi_program_num
 
     @property
     def measures(self) -> Sequence['Measure']:
@@ -1696,12 +1703,14 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         score_part_el = ElementTree.Element("score-part", {"id": "P{}".format(self.part_id)})
         ElementTree.SubElement(score_part_el, "part-name").text = self.part_name
 
-        preset = Part._get_midi_preset(self.part_name)
-        if preset is not None:
-            name, num = preset
+        name, num = Part._get_midi_preset(self.part_name)
+        name = self.instrument_name if self.instrument_name is not None else name
+        num = self.midi_program if self.midi_program is not None else num
+        if name is not None:
             score_instrument_el = ElementTree.SubElement(score_part_el, "score-instrument",
                                                          {"id": "P{}-I1".format(self.part_id)})
             ElementTree.SubElement(score_instrument_el, "instrument-name").text = name
+        if num is not None:
             midi_instrument_el = ElementTree.SubElement(score_part_el, "midi-instrument",
                                                         {"id": "P{}-I1".format(self.part_id)})
             ElementTree.SubElement(midi_instrument_el, "midi-program").text = str(num)
@@ -1722,7 +1731,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
             return best_preset_match, Part.general_midi_preset_nums[best_preset_match]
         else:
             # no good match
-            return None
+            return None, None
 
     def wrap_as_score(self) -> 'Score':
         return Score([self])
