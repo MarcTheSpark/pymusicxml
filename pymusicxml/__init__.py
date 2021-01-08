@@ -28,4 +28,5 @@ scores in Python. In the future, the ability to parse existing MusicXML scores m
 
 from .music_xml_objects import Pitch, Duration, BarRestDuration, Note, Rest, BarRest, Chord, GraceNote, GraceChord, \
     BeamedGroup, Tuplet, Clef, Measure, Part, PartGroup, Score, Notehead, StartGliss, StopGliss, StartMultiGliss, \
-    StopMultiGliss, StartSlur, StopSlur, MetronomeMark, TextAnnotation, EndDashedLine
+    StopMultiGliss, MetronomeMark, TextAnnotation, StartHairpin, StopHairpin, StartDashes, StopDashes, \
+    StartBracket, StopBracket, StartPedal, ChangePedal, StopPedal, StartTrill, StopTrill, StartSlur, StopSlur

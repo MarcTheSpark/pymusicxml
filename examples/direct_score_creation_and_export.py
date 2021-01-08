@@ -57,19 +57,19 @@ Score([
                 Rest(1)
             ], time_signature=(4, 4)),
             Measure([
-                Note("d5", 1.5),
+                Note("d5", 1.5, directions=[StartBracket(text="roguishly")]),
                 BeamedGroup([
                     Note("f#4", 0.25),
                     Note("A#4", 0.25)
                 ]),
-                Chord(["Cs4", "Ab4"], 1.0),
+                Chord(["Cs4", "Ab4"], 1.0, directions=[StopBracket(line_end="down")]),
                 Rest(1.0)
             ], barline="end")
         ])
     ]),
     Part("Bassoon", [
         Measure([
-            BarRest(4)
+            BarRest(4, directions=[StartPedal()])
         ], time_signature=(4, 4), clef="bass"),
         Measure([
             [
@@ -85,7 +85,7 @@ Score([
             [
                 Rest(1.0),
                 Note("c4", 2.0),
-                Note("Eb3", 0.5),
+                Note("Eb3", 0.5, directions=StopPedal()),
                 Rest(0.5)
             ]
         ], barline="end")
