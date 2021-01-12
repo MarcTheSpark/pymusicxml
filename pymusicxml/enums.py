@@ -14,24 +14,11 @@
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
-import setuptools
+from enum import Enum
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-setuptools.setup(
-    name="pymusicxml",
-    version="0.5",
-    author="Marc Evanstein",
-    author_email="marc@marcevanstein.com",
-    description="A simple python library for exporting MusicXML",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://git.sr.ht/~marcevanstein/pymusicxml",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Operating System :: OS Independent",
-    ],
-)
+LineEnd = Enum("LineEnd", "up down both arrow none")
+LineType = Enum("LineType", "solid dashed dotted wavy")
+AccidentalType = Enum("AccidentalType", "flat-flat flat natural sharp double-sharp")
+HairpinType = Enum("HairpinType", "crescendo diminuendo")
+StaffPlacement = Enum("StaffPlacement", "above below")
+ArpeggiationDirection = Enum("ArpeggiationDirection", "up down")

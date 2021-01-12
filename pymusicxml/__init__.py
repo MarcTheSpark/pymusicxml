@@ -26,7 +26,11 @@ scores in Python. In the future, the ability to parse existing MusicXML scores m
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
-from .music_xml_objects import Pitch, Duration, BarRestDuration, Note, Rest, BarRest, Chord, GraceNote, GraceChord, \
-    BeamedGroup, Tuplet, Clef, Measure, Part, PartGroup, Score, Notehead, StartGliss, StopGliss, StartMultiGliss, \
-    StopMultiGliss, MetronomeMark, TextAnnotation, StartHairpin, StopHairpin, StartDashes, StopDashes, \
-    StartBracket, StopBracket, StartPedal, ChangePedal, StopPedal, StartTrill, StopTrill, StartSlur, StopSlur
+from .score_components import Pitch, Duration, BarRestDuration, Note, Rest, BarRest, Chord, GraceNote, GraceChord, \
+    BeamedGroup, Tuplet, Clef, Measure, Part, PartGroup, Score, Notehead, Notation, Direction
+from pymusicxml.notations import StartGliss, StopGliss, StartMultiGliss, StopMultiGliss, Fermata, Arpeggiate, \
+    NonArpeggiate, Technical, UpBow, DownBow, OpenString, Harmonic, Stopped, SnapPizzicato, Ornament, Mordent, Turn, \
+    TrillMark, Schleifer, Tremolo
+from pymusicxml.directions import MetronomeMark, TextAnnotation
+from pymusicxml.spanners import StopBracket, StartBracket, StopDashes, StartDashes, StopTrill, StartTrill, StopPedal, \
+    ChangePedal, StartPedal, StopHairpin, StartHairpin, StopSlur, StartSlur
