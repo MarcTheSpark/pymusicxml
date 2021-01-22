@@ -1,3 +1,7 @@
+"""
+Module containing relevant Enums used throughout pymusicxml.
+"""
+
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 #  This file is part of SCAMP (Suite for Computer-Assisted Music in Python)                      #
 #  Copyright © 2020 Marc Evanstein <marc@marcevanstein.com>.                                     #
@@ -16,9 +20,41 @@
 
 from enum import Enum
 
-LineEnd = Enum("LineEnd", "up down both arrow none")
-LineType = Enum("LineType", "solid dashed dotted wavy")
-AccidentalType = Enum("AccidentalType", "flat-flat flat natural sharp double-sharp")
-HairpinType = Enum("HairpinType", "crescendo diminuendo")
-StaffPlacement = Enum("StaffPlacement", "above below")
-ArpeggiationDirection = Enum("ArpeggiationDirection", "up down")
+
+class LineEnd(Enum):
+    up = "up"
+    down = "down"
+    both = "both"
+    arrow = "arrow"
+    none = "none"
+
+
+class LineType(Enum):
+    solid = "solid"
+    dashed = "dashed"
+    dotted = "dotted"
+    wavy = "wavy"
+
+
+class HairpinType(Enum):
+    crescendo = "crescendo"
+    diminuendo = "diminuendo"
+
+
+class StaffPlacement(Enum):
+    above = "above"
+    below = "below"
+
+
+class ArpeggiationDirection(Enum):
+    up = "up"
+    down = "down"
+
+
+class AccidentalType(Enum):
+    flat_flat = "flat-flat"
+    double_flat = "flat-flat"
+    flat = "flat"
+    natural = "natural"
+    sharp = "sharp"
+    double_sharp = "double-sharp"

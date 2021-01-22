@@ -1,3 +1,7 @@
+"""
+Module containing all non-spanner notations, such as glisses, bowings, fermatas, etc.
+"""
+
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 #  This file is part of SCAMP (Suite for Computer-Assisted Music in Python)                      #
 #  Copyright © 2020 Marc Evanstein <marc@marcevanstein.com>.                                     #
@@ -101,13 +105,13 @@ class Arpeggiate(Notation):
     """
 
     def __init__(self, direction: Union[str, ArpeggiationDirection] = None):
-        self.direction = ArpeggiationDirection[direction] if isinstance(direction, str) else direction
+        self.direction = ArpeggiationDirection(direction) if isinstance(direction, str) else direction
 
     def render(self) -> Sequence[ElementTree.Element]:
         if self.direction is None:
             return ElementTree.Element("arpeggiate"),
         else:
-            return ElementTree.Element("arpeggiate", {"direction": self.direction.name}),
+            return ElementTree.Element("arpeggiate", {"direction": self.direction.value}),
 
 
 class NonArpeggiate(Notation):
@@ -203,12 +207,12 @@ class Mordent(Ornament):
     :param placement: "above" or "below"
     """
     def __init__(self, inverted: bool = False, placement: Union[str, StaffPlacement] = "above"):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.inverted = inverted
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
         return ElementTree.Element("inverted-mordent" if self.inverted else "mordent",
-                                   {"placement": self.placement.name}),
+                                   {"placement": self.placement.value}),
 
 
 class Turn(Ornament):
@@ -220,14 +224,14 @@ class Turn(Ornament):
     :param placement: "above" or "below"
     """
     def __init__(self, inverted: bool = False, delayed: bool = False, placement: Union[str, StaffPlacement] = "above"):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.inverted = inverted
         self.delayed = delayed
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
 
         return ElementTree.Element("delayed-" if self.delayed else "" + "inverted-" if self.inverted else "" + "turn",
-                                   {"placement": self.placement.name}),
+                                   {"placement": self.placement.value}),
 
 
 class TrillMark(Ornament):
@@ -238,10 +242,10 @@ class TrillMark(Ornament):
     """
 
     def __init__(self, placement: Union[str, StaffPlacement] = "above"):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
-        return ElementTree.Element("trill-mark", {"placement": self.placement.name}),
+        return ElementTree.Element("trill-mark", {"placement": self.placement.value}),
 
 
 
@@ -253,10 +257,10 @@ class Schleifer(Ornament):
     """
 
     def __init__(self, placement: Union[str, StaffPlacement] = "above"):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
-        return ElementTree.Element("schleifer", {"placement": self.placement.name}),
+        return ElementTree.Element("schleifer", {"placement": self.placement.value}),
 
 
 class Tremolo(Ornament):

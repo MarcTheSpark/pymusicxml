@@ -1,5 +1,5 @@
 """
-Module containing all of the classes representing musical objects.
+Module containing all of the classes representing the hierarchy of a musical score.
 """
 
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
@@ -1489,6 +1489,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         :param which_voices: List of voices to return notes from (numbered 0, 1, 2, 3). The default value of None
             returns notes from all voices.
+
         :return tuples of (Note/Chord/Rest, beat within measure)
         """
         # make a copy of the voice list, but with any beam groups or tuplets unraveled
@@ -1956,6 +1957,7 @@ class Score(MusicXMLComponent, MusicXMLContainer):
     def wrap_as_score(self) -> 'Score':
         return self
 
+
 class NumberedSpanner(ABC):
     """Abstract base class for part of a Direction or Notation that spans multiple time-points."""
 
@@ -2001,12 +2003,12 @@ class Direction(MusicXMLComponent, ABC):
     """
 
     def __init__(self, placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.voice = voice
         self.staff = staff
 
     def render(self) -> Sequence[ElementTree.Element]:
-        direction_element = ElementTree.Element("direction", {"placement": self.placement.name})
+        direction_element = ElementTree.Element("direction", {"placement": self.placement.value})
         direction_element.extend(self.render_direction_type())
         ElementTree.SubElement(direction_element, "voice").text = str(self.voice)
         if self.staff is not None:

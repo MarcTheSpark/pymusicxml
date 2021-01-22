@@ -1,3 +1,8 @@
+"""
+Module containing all spanners (i.e. notations that span a time-range in the score, such as slurs,
+brackets, hairpins, etc.)
+"""
+
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 #  This file is part of SCAMP (Suite for Computer-Assisted Music in Python)                      #
 #  Copyright © 2020 Marc Evanstein <marc@marcevanstein.com>.                                     #
@@ -42,22 +47,22 @@ class StopBracket(Direction, StopNumberedSpanner):
         """
         StopNumberedSpanner.__init__(self, id)
         Direction.__init__(self, placement, voice, staff)
-        self.line_end = LineEnd[line_end] if isinstance(line_end, str) else line_end
+        self.line_end = LineEnd(line_end) if isinstance(line_end, str) else line_end
         self.end_length = end_length
         self.text = TextAnnotation(text) if isinstance(text, str) else text
         if self.line_end is None:
             if self.text is None:
                 # default to a downward hook if there's no text
-                self.line_end = LineEnd["down"]
+                self.line_end = LineEnd("down")
             else:
                 # and no end cap if there is
-                self.line_end = LineEnd["none"]
+                self.line_end = LineEnd("none")
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
         bracket_dict = {"type": "stop", "number": str(self.id)}
         if self.line_end is not None:
-            bracket_dict["line-end"] = str(self.line_end.name)
+            bracket_dict["line-end"] = str(self.line_end.value)
         if self.end_length is not None:
             bracket_dict["end-length"] = str(self.end_length)
         ElementTree.SubElement(direction_type_el, "bracket", bracket_dict)
@@ -92,25 +97,25 @@ class StartBracket(Direction, StartNumberedSpanner):
                  placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, id)
         Direction.__init__(self, placement, voice, staff)
-        self.line_type = LineType[line_type] if isinstance(line_type, str) else line_type
-        self.line_end = LineEnd[line_end] if isinstance(line_end, str) else line_end
+        self.line_type = LineType(line_type) if isinstance(line_type, str) else line_type
+        self.line_end = LineEnd(line_end) if isinstance(line_end, str) else line_end
         self.end_length = end_length
         self.text = TextAnnotation(text) if isinstance(text, str) else text
         if self.line_end is None:
             if self.text is None:
                 # default to a downward hook if there's no text
-                self.line_end = LineEnd["down"]
+                self.line_end = LineEnd("down")
             else:
                 # and no end cap if there is
-                self.line_end = LineEnd["none"]
+                self.line_end = LineEnd("none")
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
         bracket_dict = {"type": "start", "number": str(self.id)}
         if self.line_type is not None:
-            bracket_dict["line-type"] = str(self.line_type.name)
+            bracket_dict["line-type"] = str(self.line_type.value)
         if self.line_end is not None:
-            bracket_dict["line-end"] = str(self.line_end.name)
+            bracket_dict["line-end"] = str(self.line_end.value)
         if self.end_length is not None:
             bracket_dict["end-length"] = str(self.end_length)
         ElementTree.SubElement(direction_type_el, "bracket", bracket_dict)
@@ -206,13 +211,13 @@ class StopTrill(Notation, StopNumberedSpanner):
     """
 
     def __init__(self, id: Any = 1, placement: Union[StaffPlacement, str] = "above"):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         super().__init__(id)
 
     def render(self) -> Sequence[ElementTree.Element]:
         ornaments_el = ElementTree.Element("ornaments")
         ElementTree.SubElement(ornaments_el, "wavy-line",
-                               {"type": "stop", "placement": self.placement.name, "number": str(self.id)})
+                               {"type": "stop", "placement": self.placement.value, "number": str(self.id)})
         return ornaments_el,
 
 
@@ -232,8 +237,8 @@ class StartTrill(Notation, StartNumberedSpanner):
 
     def __init__(self, id: Any = 1, placement: Union[StaffPlacement, str] = "above",
                  accidental: Union[AccidentalType, str] = None):
-        self.placement = StaffPlacement[placement] if isinstance(placement, str) else placement
-        self.accidental= AccidentalType[accidental] if isinstance(accidental, str) else accidental
+        self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
+        self.accidental = AccidentalType(accidental)if isinstance(accidental, str) else accidental
         super().__init__(id)
 
     def render(self) -> Sequence[ElementTree.Element]:
@@ -241,9 +246,9 @@ class StartTrill(Notation, StartNumberedSpanner):
         ElementTree.SubElement(ornaments_el, "trill-mark")
         if self.accidental is not None:
             accidental_mark = ElementTree.SubElement(ornaments_el, "accidental-mark")
-            accidental_mark.text = self.accidental.name
+            accidental_mark.text = self.accidental.value
         ElementTree.SubElement(ornaments_el, "wavy-line",
-                               {"type": "start", "placement": self.placement.name, "number": str(self.id)})
+                               {"type": "start", "placement": self.placement.value, "number": str(self.id)})
         return ornaments_el,
 
 
@@ -371,12 +376,12 @@ class StartHairpin(Direction, StartNumberedSpanner):
                  placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
         StopNumberedSpanner.__init__(self, id)
         Direction.__init__(self, placement, voice, staff)
-        self.hairpin_type = HairpinType[hairpin_type] if isinstance(hairpin_type, str) else hairpin_type
+        self.hairpin_type = HairpinType(hairpin_type) if isinstance(hairpin_type, str) else hairpin_type
         self.spread = spread
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        wedge_dict = {"type": self.hairpin_type.name, "number": str(self.id)}
+        wedge_dict = {"type": self.hairpin_type.value, "number": str(self.id)}
         if self.spread is not None:
             wedge_dict["spread"] = str(self.spread)
         ElementTree.SubElement(direction_type_el, "wedge", wedge_dict)

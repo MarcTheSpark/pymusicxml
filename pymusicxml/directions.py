@@ -1,3 +1,7 @@
+"""
+Module containing all non-spanner subclasses of the :class:`~pymusicxml.score_components.Direction` type.
+"""
+
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 #  This file is part of SCAMP (Suite for Computer-Assisted Music in Python)                      #
 #  Copyright © 2020 Marc Evanstein <marc@marcevanstein.com>.                                     #
