@@ -27,9 +27,10 @@ Score([
                     Note("f#4", 0.25),
                     Note("A#4", 0.25)
                 ]),
-                Chord(["Cs4", "Ab4"], 1.0),
+                Chord(["Cs4", "Ab4"], 1.0, directions=Dynamic("LOUD")),
                 Rest(1.0)
             ], time_signature=(4, 4), directions_with_displacements=[
+                (Dynamic("mf"), 0),
                 (MetronomeMark(1.5, 80), 0),
                 (TextAnnotation("rit.", italic=True), 1.0),
                 (MetronomeMark(1.0, 60), 3.5)

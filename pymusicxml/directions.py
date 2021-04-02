@@ -88,3 +88,30 @@ class TextAnnotation(Direction):
         type_el = ElementTree.Element("direction-type")
         ElementTree.SubElement(type_el, "words", self.text_properties).text = self.text
         return type_el,
+
+
+class Dynamic(Direction):
+    """
+    Class representing a dynamic that is attached to the staff
+
+    :param dynamic_text: the text of the dynamic, e.g. "mf"
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    """
+
+    STANDARD_TYPES = ("f", "ff", "fff", "ffff", "fffff", "ffffff", "fp", "fz", "mf", "mp", "p", "pp", "ppp", "pppp",
+                      "ppppp", "pppppp", "rf", "rfz", "sf", "sffz", "sfp", "sfpp", "sfz")
+
+    def __init__(self, dynamic_text: str, placement: Union[str, StaffPlacement] = "below",
+                 voice: int = 1, staff: int = None):
+        self.dynamic_text = dynamic_text
+        super().__init__(placement, voice, staff)
+
+    def render_direction_type(self) -> Sequence[ElementTree.Element]:
+        type_el = ElementTree.Element("direction-type")
+        dynamics_el = ElementTree.SubElement(type_el, "dynamics")
+        if self.dynamic_text in Dynamic.STANDARD_TYPES:
+            ElementTree.SubElement(dynamics_el, self.dynamic_text)
+        else:
+            ElementTree.SubElement(dynamics_el, "other-dynamics").text = self.dynamic_text
+        return type_el,

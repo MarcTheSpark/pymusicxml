@@ -7,7 +7,7 @@
 	<identification>
 		<creator type="composer">HTMLvis</creator>
 		<encoding>
-			<encoding-date>2021-01-08</encoding-date>
+			<encoding-date>2021-03-31</encoding-date>
 			<software>pymusicxml</software>
 		</encoding>
 	</identification>
@@ -160,6 +160,14 @@
 				<beam number="1">end</beam>
 				<beam number="2">end</beam>
 			</note>
+			<direction placement="below">
+				<direction-type>
+					<dynamics>
+						<other-dynamics>LOUD</other-dynamics>
+					</dynamics>
+				</direction-type>
+				<voice>1</voice>
+			</direction>
 			<note>
 				<pitch>
 					<step>C</step>
@@ -190,6 +198,14 @@
 			<backup>
 				<duration>16</duration>
 			</backup>
+			<direction placement="below">
+				<direction-type>
+					<dynamics>
+						<mf/>
+					</dynamics>
+				</direction-type>
+				<voice>1</voice>
+			</direction>
 			<direction placement="above">
 				<direction-type>
 					<metronome>

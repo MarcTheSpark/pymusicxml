@@ -31,7 +31,7 @@ from .score_components import Pitch, Duration, BarRestDuration, Note, Rest, BarR
 from pymusicxml.notations import StartGliss, StopGliss, StartMultiGliss, StopMultiGliss, Fermata, Arpeggiate, \
     NonArpeggiate, Technical, UpBow, DownBow, OpenString, Harmonic, Stopped, SnapPizzicato, Ornament, Mordent, Turn, \
     TrillMark, Schleifer, Tremolo
-from pymusicxml.directions import MetronomeMark, TextAnnotation
+from pymusicxml.directions import MetronomeMark, TextAnnotation, Dynamic
 from pymusicxml.spanners import StopBracket, StartBracket, StopDashes, StartDashes, StopTrill, StartTrill, StopPedal, \
     ChangePedal, StartPedal, StopHairpin, StartHairpin, StopSlur, StartSlur
 from pymusicxml.enums import *
