@@ -29,7 +29,7 @@ Score([
                 ]),
                 Chord(["Cs4", "Ab4"], 1.0),
                 Rest(1.0)
-            ], time_signature=(4, 4), directions_with_displacements=[
+            ], time_signature=(4, 4), key={"mode": "major", "fifths": "+2"}, directions_with_displacements=[
                 (MetronomeMark(1.5, 80), 0),
                 (TextAnnotation("rit.", italic=True), 1.0),
                 (MetronomeMark(1.0, 60), 3.5)

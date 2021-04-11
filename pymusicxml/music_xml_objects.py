@@ -1378,6 +1378,8 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
     :param contents: Either a list of Notes / Chords / Rests / Tuplets / BeamedGroups or a list of voices, each of
         which is a list of Notes / Chords / Rests / Tuplets / BeamedGroups.
     :param time_signature: in tuple form, e.g. (3, 4) for "3/4"
+    :param key: in dict form, e.g. {"mode": "major", "fifths": -1} for F Major(fifths represents the number of sharp or
+        flat symbols). Furthur parameters: https://usermanuals.musicxml.com/MusicXML/Content/EL-MusicXML-key.htm
     :param clef: either None (for no clef), a Clef object, a string (like "treble"), or a tuple like ("G", 2) to
         represent the clef letter, the line it lands, and an optional octave transposition as the third parameter
     :param barline: either None, which means there will be a regular barline, "double", "end", or any of the barline
@@ -1406,7 +1408,8 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
     }
 
     def __init__(self, contents: Union[Sequence[DurationalObject], Sequence[Sequence[DurationalObject]]] = None,
-                 time_signature: Tuple = None, clef: Union[Clef, str, Tuple] = None, barline: str = None,
+                 time_signature: Tuple = None, key: dict = None,
+                 clef: Union[Clef, str, Tuple] = None, barline: str = None,
                  staves: str = None, number: int = 1,
                  directions_with_displacements: Sequence[Tuple['Direction', float]] = ()):
         super().__init__(contents=contents, allowed_types=(Note, Rest, Chord, BarRest, BeamedGroup,
@@ -1419,6 +1422,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         self.number = number
         self.time_signature = time_signature
+        self.key = key
         assert isinstance(clef, (type(None), Clef, str, tuple)), "Clef not understood."
         self.clef = clef if isinstance(clef, (type(None), Clef)) \
             else Clef.from_string(clef) if isinstance(clef, str) \
@@ -1531,7 +1535,13 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
             time_el = ElementTree.SubElement(attributes_el, "time")
             ElementTree.SubElement(time_el, "beats").text = str(self.time_signature[0])
             ElementTree.SubElement(time_el, "beat-type").text = str(self.time_signature[1])
-
+        
+        if self.key is not None:
+            assert isinstance(self.key, dict) and len(self.key) > 0
+            key_el = ElementTree.SubElement(attributes_el, "key")
+            for property, value in self.key.items():
+                ElementTree.SubElement(key_el, property).text = str(value)
+        
         if self.clef is not None:
             attributes_el.extend(self.clef.render())
 
