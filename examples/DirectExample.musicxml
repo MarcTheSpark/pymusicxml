@@ -7,7 +7,7 @@
 	<identification>
 		<creator type="composer">HTMLvis</creator>
 		<encoding>
-			<encoding-date>2021-03-31</encoding-date>
+			<encoding-date>2021-07-03</encoding-date>
 			<software>pymusicxml</software>
 		</encoding>
 	</identification>
@@ -241,6 +241,16 @@
 		<measure number="2">
 			<attributes>
 				<divisions>5</divisions>
+				<key>
+					<key-step>D</key-step>
+					<key-alter>-1</key-alter>
+					<key-step>F</key-step>
+					<key-alter>1</key-alter>
+					<key-step>G</key-step>
+					<key-alter>2</key-alter>
+					<key-step>C</key-step>
+					<key-alter>-2</key-alter>
+				</key>
 				<clef>
 					<sign>C</sign>
 					<line>2</line>
@@ -346,6 +356,10 @@
 		<measure number="1">
 			<attributes>
 				<divisions>5</divisions>
+				<key>
+					<fifths>4</fifths>
+					<mode>dorian</mode>
+				</key>
 				<time>
 					<beats>4</beats>
 					<beat-type>4</beat-type>

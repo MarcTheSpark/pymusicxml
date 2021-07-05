@@ -44,7 +44,7 @@ Score([
                 ], (5, 4)),
                 Note("f4", 2, directions=TextAnnotation("with gusto!")),
                 Rest(1)
-            ], clef="mezzo-soprano", barline="end")
+            ], clef="mezzo-soprano", barline="end", key="d-flat, f#, gx, cbb")
         ]),
         Part("Clarinet", [
             Measure([
@@ -56,7 +56,7 @@ Score([
                 ], (5, 4)),
                 Note("f4", 2),
                 Rest(1)
-            ], time_signature=(4, 4)),
+            ], time_signature=(4, 4), key="F# dorian"),
             Measure([
                 Note("d5", 1.5, directions=[StartBracket(text="roguishly")]),
                 BeamedGroup([

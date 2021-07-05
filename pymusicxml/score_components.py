@@ -1369,7 +1369,7 @@ class Tuplet(BeamedGroup):
         return super().render()
 
 
-# ----------------------------------------------- Clef and Measure -------------------------------------------------
+# -------------------------------------------- Clef, KeySignature and Measure -----------------------------------------
 
 
 class Clef(MusicXMLComponent):
@@ -1426,6 +1426,155 @@ class Clef(MusicXMLComponent):
         return Measure([BarRest(4)], time_signature=(4, 4), clef=self).wrap_as_score()
 
 
+class KeySignature(MusicXMLComponent):
+
+    """
+    Abstract base class for traditional and non-traditional key signatures.
+    Also contains the "parse" method for parsing a string into a key signature.
+    """
+
+    _name_to_fifths = {
+        "c": 0,
+        "g": 1,
+        "d": 2,
+        "a": 3,
+        "e": 4,
+        "b": 5,
+        "f#": 6,
+        "fs": 6,
+        "c#": 7,
+        "cs": 7,
+        "f": -1,
+        "bb": -2,
+        "bf": -2,
+        "eb": -3,
+        "ef": -3,
+        "ab": -4,
+        "af": -4,
+        "db": -5,
+        "df": -5,
+        "gb": -6,
+        "gf": -6,
+        "cb": -7,
+        "cf": -7,
+    }
+
+    _alteration_to_number = {
+        "b": -1,
+        "f": -1,
+        "s": 1,
+        "#": 1,
+        "x": 2,
+        "bb": -2
+    }
+
+    mode_fifth_alterations = {
+        "ionian": 0,
+        "major": 0,
+        "dorian": -2,
+        "phrygian": -4,
+        "lydian": 1,
+        "mixolydian": -1,
+        "aeolian": -3,
+        "minor": -3,
+        "locrian": -4,
+        None: 0
+    }
+
+    @staticmethod
+    def parse(interpretable_as_key_signature: Union['KeySignature', int, str]) -> 'KeySignature':
+        """
+        Parses several kinds of input into a TraditionalKeySignature or NonTraditionalKeySignature object.
+
+        :param interpretable_as_key_signature: either a KeySignature object, an integer representing the number of
+            sharps (or flats if negative), or a string to be parsed into a key signature, such as "G major",
+            "F# lydian", or "C#, Ab" (which produces a non-traditional key-signature), etc.
+        """
+        if isinstance(interpretable_as_key_signature, KeySignature):
+            return interpretable_as_key_signature
+        elif isinstance(interpretable_as_key_signature, int):
+            return TraditionalKeySignature(int)
+        elif isinstance(interpretable_as_key_signature, str):
+            interpretable_as_key_signature = interpretable_as_key_signature.lower().replace("-", "").\
+                replace("sharp", "s").replace("flat", "f")
+            if "," in interpretable_as_key_signature:
+                interpretable_as_key_signature = interpretable_as_key_signature.replace(" ", "")
+                non_traditional_key_signature = NonTraditionalKeySignature()
+                for alteration_str in interpretable_as_key_signature.split(","):
+                    non_traditional_key_signature.add_alteration(
+                        alteration_str[0].upper(), KeySignature._alteration_to_number[alteration_str[1:]]
+                    )
+                return non_traditional_key_signature
+            else:
+                key_center, *mode_info = interpretable_as_key_signature.split(" ")
+                mode = None if len(mode_info) == 0 else mode_info[0]
+                if mode not in KeySignature.mode_fifth_alterations:
+                    raise ValueError("Invalid mode for key signature.")
+                return TraditionalKeySignature(
+                    fifths=KeySignature._name_to_fifths[key_center] + KeySignature.mode_fifth_alterations[mode],
+                    mode=mode
+                )
+        else:
+            raise ValueError("Key signature not understood.")
+
+    @abstractmethod
+    def render(self) -> Sequence[ElementTree.Element]:
+        pass
+
+    def wrap_as_score(self) -> 'Score':
+        return Measure([BarRest(4)], time_signature=(4, 4), clef="treble", key=self).wrap_as_score()
+
+
+class TraditionalKeySignature(KeySignature):
+
+    """
+    A traditional key signature. See https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/key/.
+
+    :param fifths: e.g. -2 for Bb major/G minor, or 3 for A major/F# minor
+    :param mode: one of the standard modes, e.g. "major", "minor", "lydian"
+    :param cancel: the fifths of the previous key signature being canceled out
+    """
+
+    def __init__(self, fifths, mode=None, cancel=None):
+        self.fifths = fifths
+        self.mode = mode
+        self.cancel = cancel
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        key_el = ElementTree.Element("key")
+        if self.cancel is not None:
+            ElementTree.SubElement(key_el, "cancel").text = str(self.cancel)
+        ElementTree.SubElement(key_el, "fifths").text = str(self.fifths)
+        if self.mode is not None:
+            ElementTree.SubElement(key_el, "mode").text = str(self.mode)
+        return key_el,
+
+
+class NonTraditionalKeySignature(KeySignature):
+
+    def __init__(self, *step_alteration_tuples):
+        """
+        A non-traditional key signature. See https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/key/.
+
+        :param step_alteration_tuples: a list of (step, alteration) or (step, alteration, accidental) tuples, each of
+            which corresponds to a set of <key-step>, <key-alter>, and optionally <key-accidental> tags.
+        """
+        self.step_alteration_tuples = list(step_alteration_tuples)
+
+    def add_alteration(self, step, alteration, accidental=None):
+        self.step_alteration_tuples.append((step, alteration, accidental) if accidental is not None
+                                           else (step, alteration))
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        key_el = ElementTree.Element("key")
+        for step, alteration, *accidental in self.step_alteration_tuples:
+            ElementTree.SubElement(key_el, "key-step").text = str(step)
+            ElementTree.SubElement(key_el, "key-alter").text = str(alteration)
+            if len(accidental) > 0:
+                ElementTree.SubElement(key_el, "key-accidental").text = str(accidental[0])
+        return key_el,
+
+
 class Measure(MusicXMLComponent, MusicXMLContainer):
     """
     Class representing a measure of music, perhaps with multiple voices.
@@ -1433,6 +1582,9 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
     :param contents: Either a list of Notes / Chords / Rests / Tuplets / BeamedGroups or a list of voices, each of
         which is a list of Notes / Chords / Rests / Tuplets / BeamedGroups.
     :param time_signature: in tuple form, e.g. (3, 4) for "3/4"
+    :param key: either a TraditionalKeySignature or NonTraditionalKeySignature object, an integer representing the
+        number of sharps (or flats if negative), or a string to be parsed into a key signature, such as "G major",
+        "F# lydian", etc.
     :param clef: either None (for no clef), a Clef object, a string (like "treble"), or a tuple like ("G", 2) to
         represent the clef letter, the line it lands, and an optional octave transposition as the third parameter
     :param barline: either None, which means there will be a regular barline, "double", "end", or any of the barline
@@ -1461,7 +1613,8 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
     }
 
     def __init__(self, contents: Union[Sequence[DurationalObject], Sequence[Sequence[DurationalObject]]] = None,
-                 time_signature: Tuple = None, clef: Union[Clef, str, Tuple] = None, barline: str = None,
+                 time_signature: Tuple = None, key: Union[KeySignature, str, int] = None,
+                 clef: Union[Clef, str, Tuple] = None, barline: str = None,
                  staves: str = None, number: int = 1,
                  directions_with_displacements: Sequence[Tuple['Direction', float]] = ()):
         super().__init__(contents=contents, allowed_types=(Note, Rest, Chord, BarRest, BeamedGroup,
@@ -1474,6 +1627,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         self.number = number
         self.time_signature = time_signature
+        self.key = key
         assert isinstance(clef, (type(None), Clef, str, tuple)), "Clef not understood."
         self.clef = clef if isinstance(clef, (type(None), Clef)) \
             else Clef.from_string(clef) if isinstance(clef, str) \
@@ -1620,6 +1774,9 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         divisions_el = ElementTree.SubElement(attributes_el, "divisions")
         divisions_el.text = str(num_beat_divisions)
+
+        if self.key is not None:
+            attributes_el.extend(KeySignature.parse(self.key).render())
 
         if self.time_signature is not None:
             # time_signature is expressed as a tuple
