@@ -2235,3 +2235,27 @@ class MultiGliss(Notation):
 
     def __init__(self, numbers: Sequence[int] = (1,)):
         self.numbers = numbers
+
+
+class Degree(MusicXMLComponent):
+    """
+    The <degree> element is used to add, alter, or subtract individual notes in the chord.
+    """
+    DEGREE_TYPES = ("add", "alter", "subtract")
+    def __init__(self, value: int, alter: int, degree_type: str = "alter", print_object: bool = True):
+        assert degree_type in self.DEGREE_TYPES
+        self.value = value
+        self.alter = alter
+        self.degree_type = degree_type
+        self.print_object = print_object
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        degree_element = ElementTree.Element("degree")
+        ElementTree.SubElement(degree_element, "degree-value").text = str(self.value)
+        ElementTree.SubElement(degree_element, "degree-alter").text = str(self.alter)
+        ElementTree.SubElement(degree_element, "degree-type").text = str(self.degree_type)
+        return degree_element,
+
+    def wrap_as_score(self) -> 'Score':
+        """Not sure what to do in this case."""
+        return Direction().wrap_as_score()
