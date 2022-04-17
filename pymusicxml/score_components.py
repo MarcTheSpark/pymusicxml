@@ -2239,6 +2239,11 @@ class MultiGliss(Notation):
 class Degree(MusicXMLComponent):
     """
     The <degree> element is used to add, alter, or subtract individual notes in the chord.
+
+    :param value: The number of the degree, a positive integer.
+    :param alter: An integer meaning alteration by semitones.
+    :param degree_type: Type of alteration. A positive alter + 'subtract' = semitone down.
+    :param print_object: Whether to print the degree or not.
     """
     DEGREE_TYPES = ("add", "alter", "subtract")
     def __init__(self, value: int, alter: int, degree_type: str = "alter", print_object: bool = True):
