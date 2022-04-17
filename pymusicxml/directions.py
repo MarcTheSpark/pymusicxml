@@ -21,7 +21,7 @@ Module containing all non-spanner subclasses of the :class:`~pymusicxml.score_co
 from typing import Union, Sequence
 from xml.etree import ElementTree
 from pymusicxml.enums import StaffPlacement
-from pymusicxml.score_components import Duration, Direction
+from pymusicxml.score_components import Degree, Duration, Direction
 
 
 class MetronomeMark(Direction):
@@ -115,3 +115,38 @@ class Dynamic(Direction):
         else:
             ElementTree.SubElement(dynamics_el, "other-dynamics").text = self.dynamic_text
         return type_el,
+
+
+class Harmony(Direction):
+    """
+    Class representing harmonic notation.
+    """
+    KINDS = ( "augmented", "augmented-seventh", "diminished",
+            "diminished-seventh", "dominant", "dominant-11th", "dominant-13th",
+            "dominant-ninth", "French", "German", "half-diminished", "Italian",
+            "major", "major-11th", "major-13th", "major-minor", "major-ninth",
+            "major-seventh", "major-sixth", "minor", "minor-11th", "minor-13th",
+            "minor-ninth", "minor-seventh", "minor-sixth", "Neapolitan", "none",
+            "other", "pedal", "power", "suspended-fourth", "suspended-second",
+            "Tristan")
+    def __init__(self, root_letter: str, root_alter: int, kind: str,
+                 use_symbols: bool = False, degrees: Sequence[Degree] = ()):
+        assert kind in self.KINDS, (f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
+        self.root_letter = root_letter
+        self.root_alter = root_alter
+        self.kind = kind
+        self.use_symbols = use_symbols
+        self.degrees = list(degrees)
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        harmony_el = ElementTree.Element("harmony")
+        root_el = ElementTree.SubElement(harmony_el, "root")
+        ElementTree.SubElement(root_el, "root-step").text = str(self.root_letter)
+        ElementTree.SubElement(root_el, "root-alter").text = str(self.root_alter)
+        kind_el = ElementTree.SubElement(harmony_el, "kind").text = str(self.kind)
+        for d in self.degrees:
+            harmony_el.extend(d.render())
+        return harmony_el,
+
+    def render_direction_type(self) -> Sequence[ElementTree.Element]:
+        return self.render(),
