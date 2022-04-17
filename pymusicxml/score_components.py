@@ -2255,7 +2255,7 @@ class Degree(MusicXMLComponent):
         self.print_object = print_object
 
     def render(self) -> Sequence[ElementTree.Element]:
-        degree_element = ElementTree.Element("degree")
+        degree_element = ElementTree.Element("degree", {"print-object": "yes" if self.print_object else "no"})
         ElementTree.SubElement(degree_element, "degree-value").text = str(self.value)
         ElementTree.SubElement(degree_element, "degree-alter").text = str(self.alter)
         ElementTree.SubElement(degree_element, "degree-type").text = str(self.degree_type)
