@@ -31,13 +31,13 @@ from pymusicxml import Direction
 
 class StopBracket(Direction, StopNumberedSpanner):
 
-    def __init__(self, id: Any = 1, line_end: Union[str, LineEnd] = None, end_length: Real = None,
+    def __init__(self, label: Any = 1, line_end: Union[str, LineEnd] = None, end_length: Real = None,
                  text: Union[str, TextAnnotation] = None, placement: Union[str, StaffPlacement] = "above",
                  voice: int = 1, staff: int = None):
         """
         End of a bracket spanner.
 
-        :param id: this should correspond to the id of the associated :class:`StartBracket`
+        :param label: this should correspond to the label of the associated :class:`StartBracket`
         :param line_end: Type of hook/arrow at the end of this bracket
         :param end_length: Length of the hock at the end of this bracket
         :param text: Any text to attach to the end of this bracket
@@ -45,7 +45,7 @@ class StopBracket(Direction, StopNumberedSpanner):
         :param voice: Which voice to attach to
         :param staff: Which staff to attach to if the part has multiple staves
         """
-        StopNumberedSpanner.__init__(self, id)
+        StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.line_end = LineEnd(line_end) if isinstance(line_end, str) else line_end
         self.end_length = end_length
@@ -60,7 +60,7 @@ class StopBracket(Direction, StopNumberedSpanner):
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        bracket_dict = {"type": "stop", "number": str(self.id)}
+        bracket_dict = {"type": "stop", "number": str(self.label)}
         if self.line_end is not None:
             bracket_dict["line-end"] = str(self.line_end.value)
         if self.end_length is not None:
@@ -79,9 +79,9 @@ class StartBracket(Direction, StartNumberedSpanner):
     """
     Start of a bracket spanner.
 
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     :param line_end: Type of hook/arrow at the start of this bracket
     :param end_length: Length of the hock at the start of this bracket
     :param text: Any text to attach to the start of this bracket
@@ -92,10 +92,10 @@ class StartBracket(Direction, StartNumberedSpanner):
 
     STOP_TYPE = StopBracket
 
-    def __init__(self, id: Any = 1, line_type: Union[str, LineType] = "dashed", line_end: Union[str, LineEnd] = None,
+    def __init__(self, label: Any = 1, line_type: Union[str, LineType] = "dashed", line_end: Union[str, LineEnd] = None,
                  end_length: Real = None, text: Union[str, TextAnnotation] = None,
                  placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
-        StartNumberedSpanner.__init__(self, id)
+        StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.line_type = LineType(line_type) if isinstance(line_type, str) else line_type
         self.line_end = LineEnd(line_end) if isinstance(line_end, str) else line_end
@@ -111,7 +111,7 @@ class StartBracket(Direction, StartNumberedSpanner):
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        bracket_dict = {"type": "start", "number": str(self.id)}
+        bracket_dict = {"type": "start", "number": str(self.label)}
         if self.line_type is not None:
             bracket_dict["line-type"] = str(self.line_type.value)
         if self.line_end is not None:
@@ -133,23 +133,23 @@ class StopDashes(Direction, StopNumberedSpanner):
     """
     End of a dashed spanner (e.g. used by a dashed "cresc." or "dim." marking)
 
-    :param id: this should correspond to the id of the associated :class:`StartDashes`
+    :param label: this should correspond to the label of the associated :class:`StartDashes`
     :param text: Any text to attach to the end of this dashed spanner
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     :param voice: Which voice to attach to
     :param staff: Which staff to attach to if the part has multiple staves
     """
 
-    def __init__(self, id: Any = 1, text: Union[str, TextAnnotation] = None,
+    def __init__(self, label: Any = 1, text: Union[str, TextAnnotation] = None,
                  placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
 
-        StopNumberedSpanner.__init__(self, id)
+        StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.text = TextAnnotation(text) if isinstance(text, str) else text
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        ElementTree.SubElement(direction_type_el, "dashes", {"type": "stop", "number": str(self.id)})
+        ElementTree.SubElement(direction_type_el, "dashes", {"type": "stop", "number": str(self.label)})
         return direction_type_el,
 
     def render(self) -> Sequence[ElementTree.Element]:
@@ -163,9 +163,9 @@ class StartDashes(Direction, StartNumberedSpanner):
     """
     Start of a dashed spanner (e.g. used by a dashed "cresc." or "dim." marking)
 
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     :param dash_length: Length of the dashes
     :param space_length: Length of the space between the dashes
     :param text: Any text to attach to the start of this dashed spanner
@@ -176,10 +176,10 @@ class StartDashes(Direction, StartNumberedSpanner):
 
     STOP_TYPE = StopDashes
 
-    def __init__(self, id: Any = 1, dash_length: Real = None, space_length: Real = None,
+    def __init__(self, label: Any = 1, dash_length: Real = None, space_length: Real = None,
                  text: Union[str, TextAnnotation] = None, placement: Union[str, StaffPlacement] = "above",
                  voice: int = 1, staff: int = None):
-        StartNumberedSpanner.__init__(self, id)
+        StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.text = TextAnnotation(text) if isinstance(text, str) else text
         self.dash_length = dash_length
@@ -187,7 +187,7 @@ class StartDashes(Direction, StartNumberedSpanner):
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        dash_dict = {"type": "start", "number": str(self.id)}
+        dash_dict = {"type": "start", "number": str(self.label)}
         if self.dash_length is not None:
             dash_dict["dash-length"] = str(self.dash_length)
         if self.space_length is not None:
@@ -206,18 +206,18 @@ class StopTrill(Notation, StopNumberedSpanner):
     """
     Stops a trill spanner with a wavy line.
 
-    :param id: this should correspond to the id of the associated :class:`StartTrill`
+    :param label: this should correspond to the label of the associated :class:`StartTrill`
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     """
 
-    def __init__(self, id: Any = 1, placement: Union[StaffPlacement, str] = "above"):
+    def __init__(self, label: Any = 1, placement: Union[StaffPlacement, str] = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
-        super().__init__(id)
+        super().__init__(label)
 
     def render(self) -> Sequence[ElementTree.Element]:
         ornaments_el = ElementTree.Element("ornaments")
         ElementTree.SubElement(ornaments_el, "wavy-line",
-                               {"type": "stop", "placement": self.placement.value, "number": str(self.id)})
+                               {"type": "stop", "placement": self.placement.value, "number": str(self.label)})
         return ornaments_el,
 
 
@@ -225,9 +225,9 @@ class StartTrill(Notation, StartNumberedSpanner):
     """
     Starts a trill spanner with a wavy line.
 
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     :param accidental: Accidental annotation to go on the trill ("flat-flat", "flat", "natural", "sharp",
         or "double-sharp")
@@ -235,11 +235,11 @@ class StartTrill(Notation, StartNumberedSpanner):
 
     STOP_TYPE = StopTrill
 
-    def __init__(self, id: Any = 1, placement: Union[StaffPlacement, str] = "above",
+    def __init__(self, label: Any = 1, placement: Union[StaffPlacement, str] = "above",
                  accidental: Union[AccidentalType, str] = None):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.accidental = AccidentalType(accidental)if isinstance(accidental, str) else accidental
-        super().__init__(id)
+        super().__init__(label)
 
     def render(self) -> Sequence[ElementTree.Element]:
         ornaments_el = ElementTree.Element("ornaments")
@@ -248,7 +248,7 @@ class StartTrill(Notation, StartNumberedSpanner):
             accidental_mark = ElementTree.SubElement(ornaments_el, "accidental-mark")
             accidental_mark.text = self.accidental.value
         ElementTree.SubElement(ornaments_el, "wavy-line",
-                               {"type": "start", "placement": self.placement.value, "number": str(self.id)})
+                               {"type": "start", "placement": self.placement.value, "number": str(self.label)})
         return ornaments_el,
 
 
@@ -256,7 +256,7 @@ class StopPedal(Direction, StopNumberedSpanner):
     """
     Stops a sustain pedal spanner.
 
-    :param id: this should correspond to the id of the associated :class:`StartPedal`
+    :param label: this should correspond to the label of the associated :class:`StartPedal`
     :param sign: whether or not to include a "*" sign
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -264,9 +264,9 @@ class StopPedal(Direction, StopNumberedSpanner):
     :param staff: Which staff to attach to if the part has multiple staves
     """
 
-    def __init__(self, id: Any = 1, sign: bool = False, line: bool = True,
+    def __init__(self, label: Any = 1, sign: bool = False, line: bool = True,
                  placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
-        StartNumberedSpanner.__init__(self, id)
+        StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
         self.line = line
@@ -274,7 +274,7 @@ class StopPedal(Direction, StopNumberedSpanner):
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
         ElementTree.SubElement(direction_type_el, "pedal",
-                               {"type": "stop", "number": str(self.id), "sign": ("no", "yes")[self.sign],
+                               {"type": "stop", "number": str(self.label), "sign": ("no", "yes")[self.sign],
                                 "line": ("no", "yes")[self.line]})
         return direction_type_el,
 
@@ -283,7 +283,7 @@ class ChangePedal(Direction, MidNumberedSpanner):
     """
     Pedal change in the middle of a sustain pedal spanner.
 
-    :param id: this should correspond to the id of the associated :class:`StartPedal`
+    :param label: this should correspond to the label of the associated :class:`StartPedal`
     :param sign: unclear what this means in the case of a change pedal
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -291,9 +291,9 @@ class ChangePedal(Direction, MidNumberedSpanner):
     :param staff: Which staff to attach to if the part has multiple staves
     """
 
-    def __init__(self, id: Any = 1, sign: bool = True, line: bool = True,
+    def __init__(self, label: Any = 1, sign: bool = True, line: bool = True,
                  placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
-        StartNumberedSpanner.__init__(self, id)
+        StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
         self.line = line
@@ -301,7 +301,7 @@ class ChangePedal(Direction, MidNumberedSpanner):
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
         ElementTree.SubElement(direction_type_el, "pedal",
-                               {"type": "change", "number": str(self.id), "sign": ("no", "yes")[self.sign],
+                               {"type": "change", "number": str(self.label), "sign": ("no", "yes")[self.sign],
                                 "line": ("no", "yes")[self.line]})
         return direction_type_el,
 
@@ -310,9 +310,9 @@ class StartPedal(Direction, StartNumberedSpanner):
     """
     Start of a sustain pedal spanner.
 
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     :param sign: whether or not to include a "Ped" sign
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -323,9 +323,9 @@ class StartPedal(Direction, StartNumberedSpanner):
     STOP_TYPE = StopPedal
     MID_TYPES = (ChangePedal, )
 
-    def __init__(self, id: Any = 1, sign: bool = True, line: bool = True,
+    def __init__(self, label: Any = 1, sign: bool = True, line: bool = True,
                  placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
-        StartNumberedSpanner.__init__(self, id)
+        StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
         self.line = line
@@ -333,7 +333,7 @@ class StartPedal(Direction, StartNumberedSpanner):
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
         ElementTree.SubElement(direction_type_el, "pedal",
-                               {"type": "start", "number": str(self.id), "sign": ("no", "yes")[self.sign],
+                               {"type": "start", "number": str(self.label), "sign": ("no", "yes")[self.sign],
                                 "line": ("no", "yes")[self.line]})
         return direction_type_el,
 
@@ -342,18 +342,18 @@ class StopHairpin(Direction, StopNumberedSpanner):
     """
     Notation to attach to a note that ends a hairpin
 
-    :param id: this should correspond to the id of the associated :class:`StartHairpin`
+    :param label: this should correspond to the label of the associated :class:`StartHairpin`
     """
 
-    def __init__(self, id: Any = 1, spread: Real = None, placement: Union[str, StaffPlacement] = "below",
+    def __init__(self, label: Any = 1, spread: Real = None, placement: Union[str, StaffPlacement] = "below",
                  voice: int = 1, staff: int = None):
-        StopNumberedSpanner.__init__(self, id)
+        StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.spread = spread
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        wedge_dict = {"type": "stop", "number": str(self.id)}
+        wedge_dict = {"type": "stop", "number": str(self.label)}
         if self.spread is not None:
             wedge_dict["spread"] = str(self.spread)
         ElementTree.SubElement(direction_type_el, "wedge", wedge_dict)
@@ -364,24 +364,28 @@ class StartHairpin(Direction, StartNumberedSpanner):
     """
     Notation to attach to a note that starts a hairpin
 
-    :param type: the type of hairpin ("crescendo" or "diminuendo")
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param hairpin_type: the type of hairpin ("crescendo" or "diminuendo")
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     """
 
     STOP_TYPE = StopHairpin
 
-    def __init__(self, hairpin_type: Union[str, HairpinType], id: Any = 1, spread: Real = None,
-                 placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
-        StopNumberedSpanner.__init__(self, id)
+    def __init__(self, hairpin_type: Union[str, HairpinType], label: Any = 1, spread: Real = None,
+                 placement: Union[str, StaffPlacement] = "below", niente: bool = False, voice: int = 1,
+                 staff: int = None):
+        StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.hairpin_type = HairpinType(hairpin_type) if isinstance(hairpin_type, str) else hairpin_type
         self.spread = spread
+        self.niente = niente
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
-        wedge_dict = {"type": self.hairpin_type.value, "number": str(self.id)}
+        wedge_dict = {"type": self.hairpin_type.value, "number": str(self.label)}
+        if self.niente:
+            wedge_dict["niente"] = "yes"
         if self.spread is not None:
             wedge_dict["spread"] = str(self.spread)
         ElementTree.SubElement(direction_type_el, "wedge", wedge_dict)
@@ -393,11 +397,11 @@ class StopSlur(Notation, StopNumberedSpanner):
     """
     Notation to attach to a note that ends a slur
 
-    :param id: this should correspond to the slur id of the associated :class:`StartSlur`.
+    :param label: this should correspond to the slur label of the associated :class:`StartSlur`.
     """
 
     def render(self) -> Sequence[ElementTree.Element]:
-        return ElementTree.Element("slur", {"type": "stop", "number": str(self.id)}),
+        return ElementTree.Element("slur", {"type": "stop", "number": str(self.label)}),
 
 
 class StartSlur(Notation, StartNumberedSpanner):
@@ -405,12 +409,12 @@ class StartSlur(Notation, StartNumberedSpanner):
     """
     Notation to attach to a note that starts a slur
 
-    :param id: each spanner is given an id to distinguish it from other spanners of the same type. In the MusicXML
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
         standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These ids are then converted to numbers on export.
+        a string). These labels are then converted to numbers on export.
     """
 
     STOP_TYPE = StopSlur
 
     def render(self) -> Sequence[ElementTree.Element]:
-        return ElementTree.Element("slur", {"type": "start", "number": str(self.id)}),
+        return ElementTree.Element("slur", {"type": "start", "number": str(self.label)}),

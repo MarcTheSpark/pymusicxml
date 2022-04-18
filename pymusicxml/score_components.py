@@ -1950,7 +1950,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
             STOP_SPANNER_TYPE = START_SPANNER_TYPE.STOP_TYPE
             MID_SPANNER_TYPES = START_SPANNER_TYPE.MID_TYPES
 
-            # keep a dict of which input ids are associated with which output numbers
+            # keep a dict of which input labels are associated with which output numbers
             input_to_output_numbers = {}
 
             iterator = part.iter_notations() if issubclass(START_SPANNER_TYPE, Notation) else part.iter_directions()
@@ -1959,30 +1959,31 @@ class Part(MusicXMLComponent, MusicXMLContainer):
                 if isinstance(possible_spanner, START_SPANNER_TYPE):
                     available_slur_numbers = [x for x in range(1, 7)
                                               if x not in sum(input_to_output_numbers.values(), [])]
-                    if possible_spanner.id in available_slur_numbers:
-                        available_slur_numbers.remove(possible_spanner.id)
-                        input_to_output_numbers.setdefault(possible_spanner.id, []).append(possible_spanner.id)
+                    if possible_spanner.label in available_slur_numbers:
+                        available_slur_numbers.remove(possible_spanner.label)
+                        input_to_output_numbers.setdefault(possible_spanner.label, []).append(possible_spanner.label)
                     elif len(available_slur_numbers) > 0:
                         output_num = available_slur_numbers[0]
-                        input_to_output_numbers.setdefault(possible_spanner.id, []).append(output_num)
-                        possible_spanner.id = output_num
+                        input_to_output_numbers.setdefault(possible_spanner.label, []).append(output_num)
+                        possible_spanner.label = output_num
                     else:
                         logging.warning("Ran out of available id numbers for {}; too many simultaneous.".
                                         format(START_SPANNER_TYPE))
                 elif isinstance(possible_spanner, MID_SPANNER_TYPES):
-                    if possible_spanner.id in input_to_output_numbers:
-                        possible_spanner.id = input_to_output_numbers[possible_spanner.id][0]
+                    if possible_spanner.label in input_to_output_numbers:
+                        possible_spanner.label = input_to_output_numbers[possible_spanner.label][0]
                     else:
-                        logging.warning("{} has no corresponding {}.".format(type(possible_spanner),
-                                                                             START_SPANNER_TYPE))
+                        logging.warning("{} has no corresponding {}.".format(type(possible_spanner).__name__,
+                                                                             START_SPANNER_TYPE.__name__))
                 elif isinstance(possible_spanner, STOP_SPANNER_TYPE):
-                    if possible_spanner.id in input_to_output_numbers:
-                        output_num = input_to_output_numbers[possible_spanner.id].pop(0)
-                        if len(input_to_output_numbers[possible_spanner.id]) == 0:
-                            del input_to_output_numbers[possible_spanner.id]
-                        possible_spanner.id = output_num
+                    if possible_spanner.label in input_to_output_numbers:
+                        output_num = input_to_output_numbers[possible_spanner.label].pop(0)
+                        if len(input_to_output_numbers[possible_spanner.label]) == 0:
+                            del input_to_output_numbers[possible_spanner.label]
+                        possible_spanner.label = output_num
                     else:
-                        logging.warning("{} has no corresponding {}.".format(STOP_SPANNER_TYPE, START_SPANNER_TYPE))
+                        logging.warning("{} has no corresponding {}.".format(STOP_SPANNER_TYPE.__name__,
+                                                                             START_SPANNER_TYPE.__name__))
 
     def render_part_list_entry(self) -> Sequence[ElementTree.Element]:
         """
@@ -2128,8 +2129,8 @@ class Score(MusicXMLComponent, MusicXMLContainer):
 class NumberedSpanner(ABC):
     """Abstract base class for part of a Direction or Notation that spans multiple time-points."""
 
-    def __init__(self, id: Any = 1):
-        self.id = id
+    def __init__(self, label: Any = 1):
+        self.label = label
 
 
 class StopNumberedSpanner(NumberedSpanner):
