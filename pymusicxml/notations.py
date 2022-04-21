@@ -162,7 +162,10 @@ class OpenString(Technical):
 
 
 class Harmonic(Technical):
-    """Harmonic notation"""
+    """Harmonic notation.
+
+    Note: This is not the <harmony/> notation used for chord changes. This class
+    represents playing a note as a harmonic on a single string."""
 
     def render_technical(self) -> Sequence[ElementTree.Element]:
         return ElementTree.Element("harmonic"),

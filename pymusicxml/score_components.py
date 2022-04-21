@@ -1426,6 +1426,37 @@ class Clef(MusicXMLComponent):
         return Measure([BarRest(4)], time_signature=(4, 4), clef=self).wrap_as_score()
 
 
+class Transpose(MusicXMLComponent):
+    """
+    Class representing transposition. Used for instruments like guitar or bass
+    which transpose by an octave down.
+
+    The <transpose> element represents what must be added to a written pitch to
+    get a correct sounding pitch. It is used for encoding parts for transposing
+    instruments that are in written vs. concert pitch.
+
+    :param chromatic: Chromatic transposition
+    :param diatonic: Diatonic transposition (optional)
+    :param octave: Octave change (optional)
+    """
+    def __init__(self, chromatic: int, diatonic: int, octave: int = 0):
+        self.chromatic = chromatic
+        self.diatonic = diatonic
+        self.octave = octave
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        transpose_element = ElementTree.Element("transpose")
+        ElementTree.SubElement(transpose_element, "chromatic").text = str(self.chromatic)
+        if self.diatonic != 0:
+            ElementTree.SubElement(transpose_element, "diatonic").text = str(self.diatonic)
+        if self.octave != 0:
+            ElementTree.SubElement(transpose_element, "octave-change").text = str(self.octave)
+        return transpose_element,
+
+    def wrap_as_score(self) -> 'Score':
+        return Measure([BarRest(4)], time_signature=(4, 4), transpose=self).wrap_as_score()
+
+
 class KeySignature(MusicXMLComponent):
 
     """
@@ -1616,7 +1647,8 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                  time_signature: Tuple = None, key: Union[KeySignature, str, int] = None,
                  clef: Union[Clef, str, Tuple] = None, barline: str = None,
                  staves: str = None, number: int = 1,
-                 directions_with_displacements: Sequence[Tuple['Direction', float]] = ()):
+                 directions_with_displacements: Sequence[Tuple['Direction', float]] = (),
+                 transpose: Optional[Transpose] = None):
         super().__init__(contents=contents, allowed_types=(Note, Rest, Chord, BarRest, BeamedGroup,
                                                            Tuplet, type(None), Sequence))
         assert hasattr(self.contents, '__len__') and all(
@@ -1636,6 +1668,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                and barline.lower() in Measure._barline_xml_names, "Barline type not understood"
         self.barline = barline
         self.staves = staves
+        self.transpose = transpose
 
         self.directions_with_displacements = directions_with_displacements
 
@@ -1787,6 +1820,9 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         if self.clef is not None:
             attributes_el.extend(self.clef.render())
+
+        if self.transpose is not None:
+            attributes_el.extend(self.transpose.render())
 
         if self.staves is not None:
             staves_el = ElementTree.SubElement(attributes_el, "staves")

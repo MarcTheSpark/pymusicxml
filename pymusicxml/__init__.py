@@ -27,7 +27,7 @@ scores in Python. In the future, the ability to parse existing MusicXML scores m
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
 from .score_components import Pitch, Duration, BarRestDuration, Note, Rest, BarRest, Chord, GraceNote, GraceChord, \
-    BeamedGroup, Tuplet, Clef, Measure, Part, PartGroup, Score, Notehead, Notation, Direction
+    BeamedGroup, Tuplet, Clef, Transpose, Measure, Part, PartGroup, Score, Notehead, Notation, Direction
 from pymusicxml.notations import StartGliss, StopGliss, StartMultiGliss, StopMultiGliss, Fermata, Arpeggiate, \
     NonArpeggiate, Technical, UpBow, DownBow, OpenString, Harmonic, Stopped, SnapPizzicato, Ornament, Mordent, Turn, \
     TrillMark, Schleifer, Tremolo

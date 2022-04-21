@@ -461,7 +461,7 @@
 					<words>roguishly</words>
 				</direction-type>
 				<direction-type>
-					<bracket type="start" number="1" line-type="dashed" line-end="none"/>
+					<bracket type="start" number="1" line-type="dashed" line-end="down"/>
 				</direction-type>
 				<voice>1</voice>
 			</direction>
