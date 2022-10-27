@@ -26,7 +26,7 @@ pitch_bank = ["f#4", "bb4", "d5", "e5", "ab5", "c6", "f6"]
 measures = []
 
 for i in range(20):
-    m = Measure(time_signature=(3, 4) if i == 0 else None)
+    m = Measure(time_signature=(3, 4) if i == 0 else None, barline="end" if i == 19 else None)
     for beat_num in range(3):
         if (i + beat_num) % 3 == 0:
             # one quarter note triad
