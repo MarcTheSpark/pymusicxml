@@ -46,7 +46,7 @@ Score([
                 Rest(1)
             ], clef="mezzo-soprano", barline="end", key="d-flat, f#, gx, cbb")
         ]),
-        Part("Clarinet", [
+        Part("Bb Clarinet", [
             Measure([
                 Tuplet([
                     Note("c5", 0.5),
@@ -56,7 +56,7 @@ Score([
                 ], (5, 4)),
                 Note("f4", 2),
                 Rest(1)
-            ], time_signature=(4, 4), key="F# dorian"),
+            ], time_signature=(4, 4), key="F# dorian", transpose=Transpose(-2, -1)),
             Measure([
                 Note("d5", 1.5, directions=[StartBracket(text="roguishly")]),
                 BeamedGroup([
@@ -70,7 +70,8 @@ Score([
     ]),
     Part("Bassoon", [
         Measure([
-            BarRest(4, directions=[StartPedal()])
+            BarRest(4, directions=[StartPedal(),
+                                   Harmony("D", -1, "dominant", use_symbols=True, degrees=[Degree(13, -1)])])
         ], time_signature=(4, 4), clef="bass"),
         Measure([
             [

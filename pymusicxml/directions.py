@@ -21,7 +21,7 @@ Module containing all non-spanner subclasses of the :class:`~pymusicxml.score_co
 from typing import Union, Sequence
 from xml.etree import ElementTree
 from pymusicxml.enums import StaffPlacement
-from pymusicxml.score_components import Degree, Duration, Direction
+from pymusicxml.score_components import Duration, Direction
 
 
 class MetronomeMark(Direction):
@@ -121,7 +121,7 @@ class Harmony(Direction):
     """
     Class representing harmonic notation.
     """
-    KINDS = ( "augmented", "augmented-seventh", "diminished",
+    KINDS = ("augmented", "augmented-seventh", "diminished",
             "diminished-seventh", "dominant", "dominant-11th", "dominant-13th",
             "dominant-ninth", "French", "German", "half-diminished", "Italian",
             "major", "major-11th", "major-13th", "major-minor", "major-ninth",
@@ -129,24 +129,54 @@ class Harmony(Direction):
             "minor-ninth", "minor-seventh", "minor-sixth", "Neapolitan", "none",
             "other", "pedal", "power", "suspended-fourth", "suspended-second",
             "Tristan")
+
     def __init__(self, root_letter: str, root_alter: int, kind: str,
-                 use_symbols: bool = False, degrees: Sequence[Degree] = ()):
-        assert kind in self.KINDS, (f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
+                 use_symbols: bool = False, degrees: Sequence['Degree'] = (),
+                 placement: Union[str, StaffPlacement] = "above"):
+        if kind not in self.KINDS:
+            raise ValueError(f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
         self.root_letter = root_letter
         self.root_alter = root_alter
         self.kind = kind
         self.use_symbols = use_symbols
         self.degrees = list(degrees)
+        super().__init__(placement, 1, None)
 
     def render(self) -> Sequence[ElementTree.Element]:
         harmony_el = ElementTree.Element("harmony")
         root_el = ElementTree.SubElement(harmony_el, "root")
         ElementTree.SubElement(root_el, "root-step").text = str(self.root_letter)
         ElementTree.SubElement(root_el, "root-alter").text = str(self.root_alter)
-        kind_el = ElementTree.SubElement(harmony_el, "kind").text = str(self.kind)
+        ElementTree.SubElement(harmony_el, "kind").text = str(self.kind)
         for d in self.degrees:
             harmony_el.extend(d.render())
         return harmony_el,
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         return self.render(),
+
+
+class Degree:
+    """
+    The <degree> element is used to add, alter, or subtract individual notes in the chord.
+
+    :param value: The number of the degree, a positive integer.
+    :param alter: An integer meaning alteration by semitones.
+    :param degree_type: Type of alteration. A positive alter + 'subtract' = semitone down.
+    :param print_object: Whether to print the degree or not.
+    """
+    DEGREE_TYPES = ("add", "alter", "subtract")
+
+    def __init__(self, value: int, alter: int, degree_type: str = "alter", print_object: bool = True):
+        assert degree_type in self.DEGREE_TYPES
+        self.value = value
+        self.alter = alter
+        self.degree_type = degree_type
+        self.print_object = print_object
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        degree_element = ElementTree.Element("degree", {"print-object": "yes" if self.print_object else "no"})
+        ElementTree.SubElement(degree_element, "degree-value").text = str(self.value)
+        ElementTree.SubElement(degree_element, "degree-alter").text = str(self.alter)
+        ElementTree.SubElement(degree_element, "degree-type").text = str(self.degree_type)
+        return degree_element,

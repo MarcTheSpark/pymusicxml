@@ -21,7 +21,7 @@ Module containing all non-spanner notations, such as glisses, bowings, fermatas,
 from abc import abstractmethod, ABC
 from typing import Sequence, Union
 from xml.etree import ElementTree
-from pymusicxml.score_components import MusicXMLComponent, Note, Notation, MultiGliss
+from pymusicxml.score_components import Notation, MultiGliss
 from pymusicxml.enums import StaffPlacement, ArpeggiationDirection
 
 
@@ -249,7 +249,6 @@ class TrillMark(Ornament):
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
         return ElementTree.Element("trill-mark", {"placement": self.placement.value}),
-
 
 
 class Schleifer(Ornament):

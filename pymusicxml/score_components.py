@@ -1439,17 +1439,17 @@ class Transpose(MusicXMLComponent):
     :param diatonic: Diatonic transposition (optional)
     :param octave: Octave change (optional)
     """
-    def __init__(self, chromatic: int, diatonic: int = 0, octave: int = 0):
+    def __init__(self, chromatic: int, diatonic: int = None, octave: int = None):
         self.chromatic = chromatic
-        self.diatonic = chromatic
-        self.octave  = octave
+        self.diatonic = diatonic
+        self.octave = octave
 
     def render(self) -> Sequence[ElementTree.Element]:
         transpose_element = ElementTree.Element("transpose")
-        ElementTree.SubElement(transpose_element, "chromatic").text = str(self.chromatic)
-        if self.diatonic != 0:
+        if self.diatonic is not None:
             ElementTree.SubElement(transpose_element, "diatonic").text = str(self.diatonic)
-        if self.octave != 0:
+        ElementTree.SubElement(transpose_element, "chromatic").text = str(self.chromatic)
+        if self.octave is not None:
             ElementTree.SubElement(transpose_element, "octave-change").text = str(self.octave)
         return transpose_element,
 
@@ -2235,32 +2235,3 @@ class MultiGliss(Notation):
 
     def __init__(self, numbers: Sequence[int] = (1,)):
         self.numbers = numbers
-
-
-class Degree(MusicXMLComponent):
-    """
-    The <degree> element is used to add, alter, or subtract individual notes in the chord.
-
-    :param value: The number of the degree, a positive integer.
-    :param alter: An integer meaning alteration by semitones.
-    :param degree_type: Type of alteration. A positive alter + 'subtract' = semitone down.
-    :param print_object: Whether to print the degree or not.
-    """
-    DEGREE_TYPES = ("add", "alter", "subtract")
-    def __init__(self, value: int, alter: int, degree_type: str = "alter", print_object: bool = True):
-        assert degree_type in self.DEGREE_TYPES
-        self.value = value
-        self.alter = alter
-        self.degree_type = degree_type
-        self.print_object = print_object
-
-    def render(self) -> Sequence[ElementTree.Element]:
-        degree_element = ElementTree.Element("degree", {"print-object": "yes" if self.print_object else "no"})
-        ElementTree.SubElement(degree_element, "degree-value").text = str(self.value)
-        ElementTree.SubElement(degree_element, "degree-alter").text = str(self.alter)
-        ElementTree.SubElement(degree_element, "degree-type").text = str(self.degree_type)
-        return degree_element,
-
-    def wrap_as_score(self) -> 'Score':
-        """Not sure what to do in this case."""
-        return Direction().wrap_as_score()
