@@ -7,7 +7,7 @@
 	<identification>
 		<creator type="composer">HTMLvis</creator>
 		<encoding>
-			<encoding-date>2021-07-03</encoding-date>
+			<encoding-date>2022-12-29</encoding-date>
 			<software>pymusicxml</software>
 		</encoding>
 	</identification>
@@ -26,7 +26,7 @@
 			</midi-instrument>
 		</score-part>
 		<score-part id="P2">
-			<part-name>Clarinet</part-name>
+			<part-name>Bb Clarinet</part-name>
 			<score-instrument id="P2-I1">
 				<instrument-name>Clarinet</instrument-name>
 			</score-instrument>
@@ -364,6 +364,10 @@
 					<beats>4</beats>
 					<beat-type>4</beat-type>
 				</time>
+				<transpose>
+					<diatonic>-1</diatonic>
+					<chromatic>-2</chromatic>
+				</transpose>
 			</attributes>
 			<note>
 				<pitch>
@@ -461,7 +465,7 @@
 					<words>roguishly</words>
 				</direction-type>
 				<direction-type>
-					<bracket type="start" number="1" line-type="dashed" line-end="down"/>
+					<bracket type="start" number="1" line-type="dashed" line-end="none"/>
 				</direction-type>
 				<voice>1</voice>
 			</direction>
@@ -557,6 +561,13 @@
 				</direction-type>
 				<voice>1</voice>
 			</direction>
+			<harmony>
+				<root>
+					<root-step>D</root-step>
+					<root-alter>-1</root-alter>
+				</root>
+				<kind>augmented</kind>
+			</harmony>
 			<note>
 				<rest/>
 				<duration>4</duration>

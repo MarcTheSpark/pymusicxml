@@ -1439,17 +1439,17 @@ class Transpose(MusicXMLComponent):
     :param diatonic: Diatonic transposition (optional)
     :param octave: Octave change (optional)
     """
-    def __init__(self, chromatic: int, diatonic: int = 0, octave: int = 0):
+    def __init__(self, chromatic: int, diatonic: int = None, octave: int = None):
         self.chromatic = chromatic
-        self.diatonic = chromatic
-        self.octave  = octave
+        self.diatonic = diatonic
+        self.octave = octave
 
     def render(self) -> Sequence[ElementTree.Element]:
         transpose_element = ElementTree.Element("transpose")
-        ElementTree.SubElement(transpose_element, "chromatic").text = str(self.chromatic)
-        if self.diatonic != 0:
+        if self.diatonic is not None:
             ElementTree.SubElement(transpose_element, "diatonic").text = str(self.diatonic)
-        if self.octave != 0:
+        ElementTree.SubElement(transpose_element, "chromatic").text = str(self.chromatic)
+        if self.octave is not None:
             ElementTree.SubElement(transpose_element, "octave-change").text = str(self.octave)
         return transpose_element,
 

@@ -121,7 +121,7 @@ class Harmony(Direction):
     """
     Class representing harmonic notation.
     """
-    KINDS = ( "augmented", "augmented-seventh", "diminished",
+    KINDS = ("augmented", "augmented-seventh", "diminished",
             "diminished-seventh", "dominant", "dominant-11th", "dominant-13th",
             "dominant-ninth", "French", "German", "half-diminished", "Italian",
             "major", "major-11th", "major-13th", "major-minor", "major-ninth",
@@ -129,21 +129,25 @@ class Harmony(Direction):
             "minor-ninth", "minor-seventh", "minor-sixth", "Neapolitan", "none",
             "other", "pedal", "power", "suspended-fourth", "suspended-second",
             "Tristan")
+
     def __init__(self, root_letter: str, root_alter: int, kind: str,
-                 use_symbols: bool = False, degrees: Sequence[Degree] = ()):
-        assert kind in self.KINDS, (f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
+                 use_symbols: bool = False, degrees: Sequence[Degree] = (),
+                 placement: Union[str, StaffPlacement] = "above"):
+        if kind not in self.KINDS:
+            raise ValueError(f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
         self.root_letter = root_letter
         self.root_alter = root_alter
         self.kind = kind
         self.use_symbols = use_symbols
         self.degrees = list(degrees)
+        super().__init__(placement, 1, None)
 
     def render(self) -> Sequence[ElementTree.Element]:
         harmony_el = ElementTree.Element("harmony")
         root_el = ElementTree.SubElement(harmony_el, "root")
         ElementTree.SubElement(root_el, "root-step").text = str(self.root_letter)
         ElementTree.SubElement(root_el, "root-alter").text = str(self.root_alter)
-        kind_el = ElementTree.SubElement(harmony_el, "kind").text = str(self.kind)
+        ElementTree.SubElement(harmony_el, "kind").text = str(self.kind)
         for d in self.degrees:
             harmony_el.extend(d.render())
         return harmony_el,
