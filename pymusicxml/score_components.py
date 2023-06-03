@@ -18,10 +18,9 @@ Module containing all of the classes representing the hierarchy of a musical sco
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
-from typing import MutableSequence, Sequence, Tuple, Type, Union, Optional, Iterator, Any
-
+from __future__ import annotations
+from typing import MutableSequence, Sequence, Type, Iterator, Any
 from pymusicxml.enums import StaffPlacement
-
 from ._utilities import _least_common_multiple, _is_power_of_two, _escape_split, get_average_square_correlation
 from xml.etree import ElementTree
 from abc import ABC, abstractmethod
@@ -92,7 +91,7 @@ class MusicXMLComponent(ABC):
         pass
 
     @abstractmethod
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         """
         Wraps this component in a :class:`Score` so that it can be exported and viewed
         """
@@ -165,7 +164,7 @@ class MusicXMLContainer(MutableSequence):
 
     def __init__(self, contents: Sequence[MusicXMLComponent], allowed_types: Sequence[Type]):
         contents = [] if contents is None else contents
-        self.allowed_types = tuple(allowed_types) if not isinstance(allowed_types, Tuple) else allowed_types
+        self.allowed_types = tuple(allowed_types) if not isinstance(allowed_types, tuple) else allowed_types
         if not all(isinstance(x, self.allowed_types) for x in contents):
             raise ValueError("Contents not of correct type.")
         self.contents = list(contents)
@@ -310,7 +309,7 @@ class Pitch(MusicXMLComponent):
         pitch_element.append(octave_el)
         return pitch_element,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Note(self, 1.0).wrap_as_score()
 
     def __eq__(self, other):
@@ -371,7 +370,7 @@ class Duration(DurationalObject):
         "1024th": 8
     }
 
-    def __init__(self, note_type: str, num_dots: int = 0, tuplet_ratio: Tuple = None):
+    def __init__(self, note_type: str, num_dots: int = 0, tuplet_ratio: tuple = None):
         assert note_type in Duration._length_to_note_type.values()
         self.note_type = note_type
         self.num_dots = num_dots
@@ -478,7 +477,7 @@ class Duration(DurationalObject):
         return cls.from_divisor(divisor, num_dots=num_dots)
 
     @staticmethod
-    def get_note_type_and_number_of_dots(length: float, max_dots_allowed: int = 4) -> Tuple[str, int]:
+    def get_note_type_and_number_of_dots(length: float, max_dots_allowed: int = 4) -> tuple[str, int]:
         """
         Given a length in quarter notes, get the note type and number of dots.
 
@@ -536,7 +535,7 @@ class Duration(DurationalObject):
             out += (ElementTree.Element("beat-unit-dot"), )
         return out
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Note("c4", self).wrap_as_score()
 
     def __repr__(self):
@@ -585,7 +584,7 @@ class BarRestDuration(DurationalObject):
         duration_el.text = str(int(round(self.length * self.divisions)))
         return duration_el,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return BarRest(self).wrap_as_score()
 
 
@@ -786,7 +785,7 @@ class _XMLNote(DurationalObject):
         # place any text annotations before the note so that they show up at the same time as the note start
         return sum((direction.render() for direction in self.directions), ()) + (note_element,)
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         if isinstance(self, BarRest):
             duration_as_fraction = Fraction(self.true_length).limit_denominator()
             assert _is_power_of_two(duration_as_fraction.denominator)
@@ -820,9 +819,9 @@ class Note(_XMLNote):
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
     """
 
-    def __init__(self, pitch: Union[Pitch, str], duration: Union[Duration, str, float], ties: str = None,
-                 notations=(), articulations=(), notehead: Union['Notehead', str] = None,
-                 directions: Sequence['Direction'] = (), stemless: bool = False, velocity: int = None):
+    def __init__(self, pitch: Pitch | str, duration: Duration | str | float, ties: str = None,
+                 notations=(), articulations=(), notehead: Notehead | str = None,
+                 directions: Sequence[Direction] = (), stemless: bool = False, velocity: int = None):
 
         if isinstance(pitch, str):
             pitch = Pitch.from_string(pitch)
@@ -918,7 +917,7 @@ class Notehead(MusicXMLComponent):
         notehead_el.text = self.notehead_name
         return notehead_el,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Note("c5", 1, notehead=self).wrap_as_score()
 
     def __repr__(self):
@@ -937,9 +936,9 @@ class Rest(_XMLNote):
     :param directions: see :class:`Note`
     """
 
-    def __init__(self, duration: Union[Duration, str, float],
-                 notations: Sequence[Union['Notation', str, ElementTree.Element]] = (),
-                 directions: Sequence['Direction'] = ()):
+    def __init__(self, duration: Duration | str | float,
+                 notations: Sequence[Notation | str | ElementTree.Element] = (),
+                 directions: Sequence[Direction] = ()):
         if isinstance(duration, str):
             duration = Duration.from_string(duration)
         elif isinstance(duration, Real):
@@ -967,7 +966,7 @@ class BarRest(_XMLNote):
     :param directions: see :class:`Note`
     """
 
-    def __init__(self, bar_length: Union[float, Duration, BarRestDuration], directions: Sequence['Direction'] = ()):
+    def __init__(self, bar_length: float | Duration | BarRestDuration, directions: Sequence[Direction] = ()):
         duration = BarRestDuration(bar_length) if isinstance(bar_length, Real) \
             else BarRestDuration(bar_length.true_length) if isinstance(bar_length, Duration) else bar_length
         super().__init__("bar rest", duration, directions=directions)
@@ -1005,8 +1004,8 @@ class Chord(DurationalObject):
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
     """
 
-    def __init__(self, pitches: Sequence[Union[Pitch, str]], duration: Union[Duration, str, float],
-                 ties: Union[str, Sequence[Optional[str]]] = None, notations=(), articulations=(),
+    def __init__(self, pitches: Sequence[Pitch | str], duration: Duration | str | float,
+                 ties: str | Sequence[str | None] = None, notations=(), articulations=(),
                  noteheads=None, directions=(), stemless: bool = False, velocity: int = None):
         assert isinstance(pitches, (list, tuple)) and len(pitches) > 1, "Chord should have multiple notes."
         pitches = [Pitch.from_string(pitch) if isinstance(pitch, str) else pitch for pitch in pitches]
@@ -1085,7 +1084,7 @@ class Chord(DurationalObject):
         return self.notes[0].length_in_divisions
 
     @property
-    def notations(self) -> Sequence['Notation']:
+    def notations(self) -> Sequence[Notation]:
         """
         Notations attached to this chord.
         """
@@ -1176,7 +1175,7 @@ class Chord(DurationalObject):
     def render(self) -> Sequence[ElementTree.Element]:
         return sum((note.render() for note in self.notes), ())
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         measure_length = 4 if self.true_length <= 4 else int(self.true_length) + 1
         return Measure(pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
 
@@ -1214,9 +1213,9 @@ class GraceNote(Note):
     :param slashed: whether or not this grace note is rendered with a slash.
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
     """
-    def __init__(self, pitch: Union[Pitch, str], duration: Union[Duration, str, float], ties: str = None,
-                 notations=(), articulations=(), notehead: Union['Notehead', str] = None,
-                 directions: Sequence['Direction'] = (), stemless: bool = False, slashed=False, velocity: int = None):
+    def __init__(self, pitch: Pitch | str, duration: Duration | str | float, ties: str = None,
+                 notations=(), articulations=(), notehead: Notehead | str = None,
+                 directions: Sequence[Direction] = (), stemless: bool = False, slashed=False, velocity: int = None):
         super().__init__(pitch,  duration, ties=ties, notations=notations, articulations=articulations,
                          notehead=notehead, directions=directions, stemless=stemless, velocity=velocity)
         self.is_grace = True
@@ -1245,8 +1244,8 @@ class GraceChord(Chord):
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
     """
 
-    def __init__(self, pitches: Sequence[Union[Pitch, str]], duration: Union[Duration, str, float],
-                 ties: Union[str, Sequence[Optional[str]]] = None, notations=(), articulations=(),
+    def __init__(self, pitches: Sequence[Pitch | str], duration: Duration | str | float,
+                 ties: str | Sequence[str | None] = None, notations=(), articulations=(),
                  noteheads=None, directions=(), stemless: bool = False, slashed=False, velocity: int = None):
         super().__init__(pitches, duration, ties=ties, notations=notations, articulations=articulations,
                          noteheads=noteheads, directions=directions, stemless=stemless, velocity=velocity)
@@ -1330,7 +1329,7 @@ class BeamedGroup(DurationalObject, MusicXMLContainer):
         self.render_contents_beaming()
         return sum((leaf.render() for leaf in self.contents), ())
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         measure_length = 4 if self.true_length <= 4 else int(math.ceil(self.true_length))
         return Measure(pad_with_rests(self, measure_length), (measure_length, 4)).wrap_as_score()
 
@@ -1343,7 +1342,7 @@ class Tuplet(BeamedGroup):
     :param ratio: a tuple representing the tuplet ratio (as described in :class:`Duration`)
     """
 
-    def __init__(self, contents: Sequence[MusicXMLComponent], ratio: Tuple):
+    def __init__(self, contents: Sequence[MusicXMLComponent], ratio: tuple):
         super().__init__(contents)
         self.ratio = ratio
         self._set_tuplet_info_for_contents(ratio)
@@ -1422,7 +1421,7 @@ class Clef(MusicXMLComponent):
             ElementTree.SubElement(clef_element, "clef-octave-change").text = str(self.octaves_transposition)
         return clef_element,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Measure([BarRest(4)], time_signature=(4, 4), clef=self).wrap_as_score()
 
 
@@ -1453,7 +1452,7 @@ class Transpose(MusicXMLComponent):
             ElementTree.SubElement(transpose_element, "octave-change").text = str(self.octave)
         return transpose_element,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Measure([BarRest(4)], time_signature=(4, 4), transpose=self).wrap_as_score()
 
 
@@ -1513,7 +1512,7 @@ class KeySignature(MusicXMLComponent):
     }
 
     @staticmethod
-    def parse(interpretable_as_key_signature: Union['KeySignature', int, str]) -> 'KeySignature':
+    def parse(interpretable_as_key_signature: KeySignature | int | str) -> KeySignature:
         """
         Parses several kinds of input into a TraditionalKeySignature or NonTraditionalKeySignature object.
 
@@ -1552,7 +1551,7 @@ class KeySignature(MusicXMLComponent):
     def render(self) -> Sequence[ElementTree.Element]:
         pass
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Measure([BarRest(4)], time_signature=(4, 4), clef="treble", key=self).wrap_as_score()
 
 
@@ -1643,12 +1642,12 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         "none": "none"
     }
 
-    def __init__(self, contents: Union[Sequence[DurationalObject], Sequence[Sequence[DurationalObject]]] = None,
-                 time_signature: Tuple = None, key: Union[KeySignature, str, int] = None,
-                 clef: Union[Clef, str, Tuple] = None, barline: str = None,
+    def __init__(self, contents: Sequence[DurationalObject] | Sequence[Sequence[DurationalObject]] = None,
+                 time_signature: tuple = None, key: KeySignature | str | int = None,
+                 clef: Clef | str | tuple = None, barline: str = None,
                  staves: str = None, number: int = 1,
-                 directions_with_displacements: Sequence[Tuple['Direction', float]] = (),
-                 transpose: Optional[Transpose] = None):
+                 directions_with_displacements: Sequence[tuple[Direction, float]] = (),
+                 transpose: Transpose | None = None):
         super().__init__(contents=contents, allowed_types=(Note, Rest, Chord, BarRest, BeamedGroup,
                                                            Tuplet, type(None), Sequence))
         assert hasattr(self.contents, '__len__') and all(
@@ -1673,13 +1672,13 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         self.directions_with_displacements = directions_with_displacements
 
     @property
-    def voices(self) -> Tuple[Sequence[MusicXMLComponent]]:
+    def voices(self) -> tuple[Sequence[MusicXMLComponent]]:
         """
         Returns a tuple of the voices in this Measure
         """
         return (self.contents, ) if not isinstance(self.contents[0], (tuple, list, type(None))) else self.contents
 
-    def iter_leaves(self, which_voices=None) -> Iterator[Tuple[Union[Note, Chord, Rest], float]]:
+    def iter_leaves(self, which_voices=None) -> Iterator[tuple[Note | Chord | Rest, float]]:
         """
         Iterates through the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups. The
         notes/chords/rests draw from the specified voices.
@@ -1711,7 +1710,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                 voice_list_copy.pop(voice_to_pop)
                 next_note_beats.pop(voice_to_pop)
 
-    def leaves(self, which_voices=None) -> Sequence[Union[Note, Chord, Rest]]:
+    def leaves(self, which_voices=None) -> Sequence[Note | Chord | Rest]:
         """
         Returns a tuple of all to the Notes/Chords/Rests in this measure, expanding out any tuplets or beam groups. The
         notes/chords/rests and draw from the specified voices, and are returned in order within the measure.
@@ -1721,7 +1720,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         """
         return tuple(leaf for leaf, _ in self.iter_leaves(which_voices))
 
-    def iter_directions(self) -> Iterator[Tuple['Direction', float]]:
+    def iter_directions(self) -> Iterator[tuple[Direction, float]]:
         """
         Iterates through the Directions in this measure, both those attached to notes and those passed to the
         directions_with_displacements constructor argument.
@@ -1737,7 +1736,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         directions_with_displacements.sort(key=lambda x: (x[1], isinstance(x, Direction)))
         yield from directions_with_displacements
 
-    def iter_notations(self) -> Iterator[Tuple['Notation', float]]:
+    def iter_notations(self) -> Iterator[tuple[Notation, float]]:
         """
         Iterates through the Notations in this measure, in order.
 
@@ -1747,14 +1746,14 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
             for notation in leaf.notations:
                 yield notation, beat_within_measure
 
-    def directions(self) -> Sequence['Direction']:
+    def directions(self) -> Sequence[Direction]:
         """
         Returns a tuple of all to the Diections in this measure, both those attached to notes and those passed to the
         directions_with_displacements constructor argument. Returned in order within the measure.
         """
         return tuple(direction for direction, _ in self.iter_directions())
 
-    def notations(self) -> Sequence['Notation']:
+    def notations(self) -> Sequence[Notation]:
         """
         Returns a tuple of all to the Notation in this measure, returned in order within the measure.
         """
@@ -1862,7 +1861,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         return measure_element,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Part("", [self]).wrap_as_score()
 
 
@@ -1924,13 +1923,13 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         self.midi_program = midi_program_num
 
     @property
-    def measures(self) -> Sequence['Measure']:
+    def measures(self) -> Sequence[Measure]:
         """
         List of the measures in this Part.
         """
         return self.contents
 
-    def iter_leaves(self, which_voices=None) -> Iterator[Union[Note, Chord, Rest]]:
+    def iter_leaves(self, which_voices=None) -> Iterator[Note | Chord | Rest]:
         """
         Iterates through the Notes/Chords/Rests in this part, expanding out any measures, tuplets and beam groups. The
         notes/chords/rests are ordered in time, and draw from the specified voices.
@@ -1942,7 +1941,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
             for leaf, _ in measure.iter_leaves(which_voices):
                 yield leaf
 
-    def iter_directions(self, direction_type=None) -> Iterator['Direction']:
+    def iter_directions(self, direction_type=None) -> Iterator[Direction]:
         """
         Iterates through all directions, or all directions of a certain type, in this Part.
 
@@ -1953,7 +1952,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
                 if direction_type is None or isinstance(direction, direction_type):
                     yield direction
 
-    def iter_notations(self, notation_type=None) -> Iterator['Notation']:
+    def iter_notations(self, notation_type=None) -> Iterator[Notation]:
         """
         Iterates through all notations, or all notations of a certain type, in this Part.
 
@@ -1974,7 +1973,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
         return part_element,
 
     @staticmethod
-    def _validate_spanner_numbers(part: 'Part'):
+    def _validate_spanner_numbers(part: Part):
         """
         Redoes all the spanner numbers so that they are integers from 1-6 in accordance with the MusicXML number-level
         type. We want to be able to assign any number to the spanner (since keeping track of which numbers are available
@@ -2058,7 +2057,7 @@ class Part(MusicXMLComponent, MusicXMLContainer):
             # no good match
             return None, None
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Score([self])
 
 
@@ -2107,7 +2106,7 @@ class PartGroup(MusicXMLComponent, MusicXMLContainer):
     def _render_stop_element():
         return ElementTree.Element("part-group", {"type": "stop"})
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Score([self])
 
 
@@ -2121,7 +2120,7 @@ class Score(MusicXMLComponent, MusicXMLContainer):
     :param composer: name of the composer
     """
 
-    def __init__(self, contents: Sequence[Union[Part, PartGroup]] = None, title: str = None, composer: str = None):
+    def __init__(self, contents: Sequence[Part | PartGroup] = None, title: str = None, composer: str = None):
         super().__init__(contents=contents, allowed_types=(Part, PartGroup))
         self.title = title
         self.composer = composer
@@ -2158,7 +2157,7 @@ class Score(MusicXMLComponent, MusicXMLContainer):
             score_element.extend(part_or_part_group.render())
         return score_element,
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return self
 
 
@@ -2196,7 +2195,7 @@ class Notation(MusicXMLComponent, ABC):
     def render(self) -> Sequence[ElementTree.Element]:
         pass
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Note("c5", 1, notations=(self, )).wrap_as_score()
 
 
@@ -2206,7 +2205,7 @@ class Direction(MusicXMLComponent, ABC):
     Abstract base class for musical directions, such as text and metronome marks.
     """
 
-    def __init__(self, placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
+    def __init__(self, placement: str | StaffPlacement = "above", voice: int = 1, staff: int = None):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.voice = voice
         self.staff = staff
@@ -2226,7 +2225,7 @@ class Direction(MusicXMLComponent, ABC):
         """
         pass
 
-    def wrap_as_score(self) -> 'Score':
+    def wrap_as_score(self) -> Score:
         return Measure([BarRest(4, directions=(self, ))], time_signature=(4, 4)).wrap_as_score()
 
 

@@ -18,8 +18,9 @@ Module containing all non-spanner notations, such as glisses, bowings, fermatas,
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
+from __future__ import annotations
 from abc import abstractmethod, ABC
-from typing import Sequence, Union
+from typing import Sequence
 from xml.etree import ElementTree
 from pymusicxml.score_components import Notation, MultiGliss
 from pymusicxml.enums import StaffPlacement, ArpeggiationDirection
@@ -104,7 +105,7 @@ class Arpeggiate(Notation):
     :param direction: "up" or "down"
     """
 
-    def __init__(self, direction: Union[str, ArpeggiationDirection] = None):
+    def __init__(self, direction: str | ArpeggiationDirection = None):
         self.direction = ArpeggiationDirection(direction) if isinstance(direction, str) else direction
 
     def render(self) -> Sequence[ElementTree.Element]:
@@ -209,7 +210,7 @@ class Mordent(Ornament):
     :param inverted: if true, an inverted mordent
     :param placement: "above" or "below"
     """
-    def __init__(self, inverted: bool = False, placement: Union[str, StaffPlacement] = "above"):
+    def __init__(self, inverted: bool = False, placement: str | StaffPlacement = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.inverted = inverted
 
@@ -226,7 +227,7 @@ class Turn(Ornament):
     :param delayed: if true, a turn which is delayed until the end of the note
     :param placement: "above" or "below"
     """
-    def __init__(self, inverted: bool = False, delayed: bool = False, placement: Union[str, StaffPlacement] = "above"):
+    def __init__(self, inverted: bool = False, delayed: bool = False, placement: str | StaffPlacement = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.inverted = inverted
         self.delayed = delayed
@@ -244,7 +245,7 @@ class TrillMark(Ornament):
     :param placement: "above" or "below"
     """
 
-    def __init__(self, placement: Union[str, StaffPlacement] = "above"):
+    def __init__(self, placement: str | StaffPlacement = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:
@@ -258,7 +259,7 @@ class Schleifer(Ornament):
     :param placement: "above" or "below"
     """
 
-    def __init__(self, placement: Union[str, StaffPlacement] = "above"):
+    def __init__(self, placement: str | StaffPlacement = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
 
     def render_ornament(self) -> Sequence[ElementTree.Element]:

@@ -18,7 +18,8 @@ Module containing all non-spanner subclasses of the :class:`~pymusicxml.score_co
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
-from typing import Union, Sequence
+from __future__ import annotations
+from typing import Sequence
 from xml.etree import ElementTree
 from pymusicxml.enums import StaffPlacement
 from pymusicxml.score_components import Duration, Direction
@@ -38,7 +39,7 @@ class MetronomeMark(Direction):
         font_size="5"
     """
 
-    def __init__(self, beat_length: float, bpm: float, placement: Union[str, StaffPlacement] = "above",
+    def __init__(self, beat_length: float, bpm: float, placement: str | StaffPlacement = "above",
                  voice: int = 1, staff: int = None, **other_attributes):
         super().__init__(placement, voice, staff)
         try:
@@ -73,7 +74,7 @@ class TextAnnotation(Direction):
     """
 
     def __init__(self, text: str, font_size: float = None, italic: bool = False, bold: bool = False,
-                 placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None, **kwargs):
+                 placement: str | StaffPlacement = "above", voice: int = 1, staff: int = None, **kwargs):
         super().__init__(placement, voice, staff)
         self.text = text
         self.text_properties = kwargs
@@ -102,7 +103,7 @@ class Dynamic(Direction):
     STANDARD_TYPES = ("f", "ff", "fff", "ffff", "fffff", "ffffff", "fp", "fz", "mf", "mp", "p", "pp", "ppp", "pppp",
                       "ppppp", "pppppp", "rf", "rfz", "sf", "sffz", "sfp", "sfpp", "sfz")
 
-    def __init__(self, dynamic_text: str, placement: Union[str, StaffPlacement] = "below",
+    def __init__(self, dynamic_text: str, placement: str | StaffPlacement = "below",
                  voice: int = 1, staff: int = None):
         self.dynamic_text = dynamic_text
         super().__init__(placement, voice, staff)
@@ -131,8 +132,8 @@ class Harmony(Direction):
             "Tristan")
 
     def __init__(self, root_letter: str, root_alter: int, kind: str,
-                 use_symbols: bool = False, degrees: Sequence['Degree'] = (),
-                 placement: Union[str, StaffPlacement] = "above"):
+                 use_symbols: bool = False, degrees: Sequence[Degree] = (),
+                 placement: str | StaffPlacement = "above"):
         if kind not in self.KINDS:
             raise ValueError(f"Chord {kind} of invalid kind. Allowed values: {self.KINDS}")
         self.root_letter = root_letter

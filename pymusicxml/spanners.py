@@ -19,8 +19,9 @@ brackets, hairpins, etc.)
 #  If not, see <http://www.gnu.org/licenses/>.                                                   #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  #
 
+from __future__ import annotations
 from numbers import Real
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 from xml.etree import ElementTree
 from .enums import LineEnd, LineType, AccidentalType, HairpinType, StaffPlacement
 from .score_components import StopNumberedSpanner, MidNumberedSpanner, StartNumberedSpanner
@@ -31,8 +32,8 @@ from pymusicxml import Direction
 
 class StopBracket(Direction, StopNumberedSpanner):
 
-    def __init__(self, label: Any = 1, line_end: Union[str, LineEnd] = None, end_length: Real = None,
-                 text: Union[str, TextAnnotation] = None, placement: Union[str, StaffPlacement] = "above",
+    def __init__(self, label: Any = 1, line_end: str | LineEnd = None, end_length: Real = None,
+                 text: str | TextAnnotation = None, placement: str | StaffPlacement = "above",
                  voice: int = 1, staff: int = None):
         """
         End of a bracket spanner.
@@ -92,9 +93,9 @@ class StartBracket(Direction, StartNumberedSpanner):
 
     STOP_TYPE = StopBracket
 
-    def __init__(self, label: Any = 1, line_type: Union[str, LineType] = "dashed", line_end: Union[str, LineEnd] = None,
-                 end_length: Real = None, text: Union[str, TextAnnotation] = None,
-                 placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
+    def __init__(self, label: Any = 1, line_type: str | LineType = "dashed", line_end: str | LineEnd = None,
+                 end_length: Real = None, text: str | TextAnnotation = None,
+                 placement: str | StaffPlacement = "above", voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.line_type = LineType(line_type) if isinstance(line_type, str) else line_type
@@ -140,8 +141,8 @@ class StopDashes(Direction, StopNumberedSpanner):
     :param staff: Which staff to attach to if the part has multiple staves
     """
 
-    def __init__(self, label: Any = 1, text: Union[str, TextAnnotation] = None,
-                 placement: Union[str, StaffPlacement] = "above", voice: int = 1, staff: int = None):
+    def __init__(self, label: Any = 1, text: str | TextAnnotation = None,
+                 placement: str | StaffPlacement = "above", voice: int = 1, staff: int = None):
 
         StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
@@ -177,7 +178,7 @@ class StartDashes(Direction, StartNumberedSpanner):
     STOP_TYPE = StopDashes
 
     def __init__(self, label: Any = 1, dash_length: Real = None, space_length: Real = None,
-                 text: Union[str, TextAnnotation] = None, placement: Union[str, StaffPlacement] = "above",
+                 text: str | TextAnnotation = None, placement: str | StaffPlacement = "above",
                  voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
@@ -210,7 +211,7 @@ class StopTrill(Notation, StopNumberedSpanner):
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     """
 
-    def __init__(self, label: Any = 1, placement: Union[StaffPlacement, str] = "above"):
+    def __init__(self, label: Any = 1, placement: StaffPlacement | str = "above"):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         super().__init__(label)
 
@@ -235,8 +236,8 @@ class StartTrill(Notation, StartNumberedSpanner):
 
     STOP_TYPE = StopTrill
 
-    def __init__(self, label: Any = 1, placement: Union[StaffPlacement, str] = "above",
-                 accidental: Union[AccidentalType, str] = None):
+    def __init__(self, label: Any = 1, placement: StaffPlacement | str = "above",
+                 accidental: AccidentalType | str = None):
         self.placement = StaffPlacement(placement) if isinstance(placement, str) else placement
         self.accidental = AccidentalType(accidental)if isinstance(accidental, str) else accidental
         super().__init__(label)
@@ -265,7 +266,7 @@ class StopPedal(Direction, StopNumberedSpanner):
     """
 
     def __init__(self, label: Any = 1, sign: bool = False, line: bool = True,
-                 placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
+                 placement: str | StaffPlacement = "below", voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
@@ -292,7 +293,7 @@ class ChangePedal(Direction, MidNumberedSpanner):
     """
 
     def __init__(self, label: Any = 1, sign: bool = True, line: bool = True,
-                 placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
+                 placement: str | StaffPlacement = "below", voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
@@ -324,7 +325,7 @@ class StartPedal(Direction, StartNumberedSpanner):
     MID_TYPES = (ChangePedal, )
 
     def __init__(self, label: Any = 1, sign: bool = True, line: bool = True,
-                 placement: Union[str, StaffPlacement] = "below", voice: int = 1, staff: int = None):
+                 placement: str | StaffPlacement = "below", voice: int = 1, staff: int = None):
         StartNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.sign = sign
@@ -345,7 +346,7 @@ class StopHairpin(Direction, StopNumberedSpanner):
     :param label: this should correspond to the label of the associated :class:`StartHairpin`
     """
 
-    def __init__(self, label: Any = 1, spread: Real = None, placement: Union[str, StaffPlacement] = "below",
+    def __init__(self, label: Any = 1, spread: Real = None, placement: str | StaffPlacement = "below",
                  voice: int = 1, staff: int = None):
         StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
@@ -372,8 +373,8 @@ class StartHairpin(Direction, StartNumberedSpanner):
 
     STOP_TYPE = StopHairpin
 
-    def __init__(self, hairpin_type: Union[str, HairpinType], label: Any = 1, spread: Real = None,
-                 placement: Union[str, StaffPlacement] = "below", niente: bool = False, voice: int = 1,
+    def __init__(self, hairpin_type: str | HairpinType, label: Any = 1, spread: Real = None,
+                 placement: str | StaffPlacement = "below", niente: bool = False, voice: int = 1,
                  staff: int = None):
         StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
