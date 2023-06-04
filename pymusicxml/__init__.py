@@ -35,3 +35,7 @@ from pymusicxml.directions import Harmony, Degree, MetronomeMark, TextAnnotation
 from pymusicxml.spanners import StopBracket, StartBracket, StopDashes, StartDashes, StopTrill, StartTrill, StopPedal, \
     ChangePedal, StartPedal, StopHairpin, StartHairpin, StopSlur, StartSlur
 from pymusicxml.enums import *
+import importlib.metadata
+
+__version__ = importlib.metadata.version('pymusicxml')
+__author__ = importlib.metadata.metadata('pymusicxml')['Author']
