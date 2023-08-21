@@ -1523,7 +1523,7 @@ class KeySignature(MusicXMLComponent):
         if isinstance(interpretable_as_key_signature, KeySignature):
             return interpretable_as_key_signature
         elif isinstance(interpretable_as_key_signature, int):
-            return TraditionalKeySignature(int)
+            return TraditionalKeySignature(interpretable_as_key_signature)
         elif isinstance(interpretable_as_key_signature, str):
             interpretable_as_key_signature = interpretable_as_key_signature.lower().replace("-", "").\
                 replace("sharp", "s").replace("flat", "f")
