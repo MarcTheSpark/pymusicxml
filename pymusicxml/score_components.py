@@ -614,11 +614,20 @@ class _XMLNote(DurationalObject):
     :param voice: which voice this note belongs to within its given staff
     :param staff: which staff this note belongs to within its given part
     :param velocity: a note velocity which gets passed along and used for playback by many applications
+    :param accidental: "natural", "flat", "flat-flat", "sharp", "double-sharp", or None
     """
+
+    _accidental_to_alteration = {
+        "natural": 0,
+        "flat": -1,
+        "flat-flat": -2,
+        "sharp": 1,
+        "double-sharp": 2
+    }
 
     def __init__(self, pitch, duration, ties=None, notations=(), articulations=(), notehead=None, beams=None,
                  directions=(), stemless=False, grace=False, is_chord_member=False, voice=None, staff=None,
-                 velocity=None):
+                 velocity=None, accidental=None):
 
         assert not (grace and pitch is None)  # can't have grace rests
         self.pitch = pitch
@@ -640,6 +649,8 @@ class _XMLNote(DurationalObject):
         self.voice = voice
         self.staff = staff
         self.velocity = velocity
+        assert accidental in ("natural", "flat", "flat-flat", "sharp", "double-sharp", None)
+        self.accidental = accidental
 
     @property
     def true_length(self) -> float:
@@ -736,6 +747,10 @@ class _XMLNote(DurationalObject):
         if self.staff is not None:
             ElementTree.SubElement(note_element, "staff").text = str(self.staff)
 
+        # ------------------ set accidental ----------------
+        if self.accidental is not None and self.pitch is not None and self.pitch.alteration is not None and _XMLNote._accidental_to_alteration[self.accidental] == self.pitch.alteration:
+            ElementTree.SubElement(note_element, "accidental").text = str(self.accidental)
+
         # ---------------- set attributes that apply to notes only ----------------
 
         if self.pitch is not None:
@@ -817,11 +832,12 @@ class Note(_XMLNote):
         :class:`MetronomeMark`) to populate the musicXML "directions" tag.
     :param stemless: boolean for whether to render the note with no stem.
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
+    :param accidental: "natural", "flat", "flat-flat", "sharp", "double-sharp", or None
     """
 
     def __init__(self, pitch: Pitch | str, duration: Duration | str | float, ties: str = None,
                  notations=(), articulations=(), notehead: Notehead | str = None,
-                 directions: Sequence[Direction] = (), stemless: bool = False, velocity: int = None):
+                 directions: Sequence[Direction] = (), stemless: bool = False, velocity: int = None, accidental: str = None):
 
         if isinstance(pitch, str):
             pitch = Pitch.from_string(pitch)
@@ -835,9 +851,12 @@ class Note(_XMLNote):
         if ties not in ("start", "continue", "stop", None):
             raise ValueError('Ties argument must be one of ("start", "continue", "stop", None)')
 
+        if accidental not in ("natural", "flat", "flat-flat", "sharp", "double-sharp", None):
+            raise ValueError('Accidental argument must be one of ("natural", "flat", "flat-flat", "sharp", "double-sharp", None)')
+
         assert isinstance(duration, Duration)
         super().__init__(pitch, duration, ties=ties, notations=notations, articulations=articulations,
-                         notehead=notehead, directions=directions, stemless=stemless, velocity=velocity)
+                         notehead=notehead, directions=directions, stemless=stemless, velocity=velocity, accidental=accidental)
 
     @property
     def starts_tie(self):
@@ -872,14 +891,15 @@ class Note(_XMLNote):
             self.ties = None if self.ties in ("stop", None) else "start"
 
     def __repr__(self):
-        return "Note({}, {}{}{}{}{})".format(
+        return "Note({}, {}{}{}{}{}{}{}{})".format(
             self.pitch, self.duration,
             ", ties=\"{}\"".format(self.ties) if self.ties is not None else "",
             ", notations={}".format(self.notations) if len(self.notations) > 0 else "",
             ", articulations={}".format(self.articulations) if len(self.articulations) > 0 else "",
             ", notehead=\"{}\"".format(self.notehead) if self.notehead is not None else "",
             ", directions=\"{}\"".format(self.directions) if self.directions is not None else "",
-            ", stemless=\"{}\"".format(self.stemless) if self.stemless is not None else ""
+            ", stemless=\"{}\"".format(self.stemless) if self.stemless is not None else "",
+            ", accidental=\"{}\"".format(self.accidental) if self.accidental is not None else ""
         )
 
 
@@ -995,18 +1015,19 @@ class Chord(DurationalObject):
     :param notations: a notation or list of notations like that passed to a :class:`Note` object. Since this is a
         chord, it is also possible to include a :class:`StartMultiGliss` or :class:`StopMultiGliss` object.
     :param articulations: an articulation or list of articulations like that passed to a :class:`Note` object.
-    :param noteheads: Either a single notehead (in the form of a :class:`Notehead` or string representing XML
+    :param noteheads: either a single notehead (in the form of a :class:`Notehead` or string representing XML
         notehead type) or a list of such noteheads, one for each pitch. The former results in all noteheads in the
         chord being the same; the latter results in different noteheads for each chord member. Note that the default
         of None represents ordinary noteheads.
     :param directions: a direction or list of directions like that passed to a :class:`Note` object.
     :param stemless: boolean for whether to render the chord with no stem.
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
+    :param accidentals: either one of "natural", "flat", "flat-flat", "sharp", "double-sharp", or None, or a list of such accidentals, one for each note.
     """
 
     def __init__(self, pitches: Sequence[Pitch | str], duration: Duration | str | float,
                  ties: str | Sequence[str | None] = None, notations=(), articulations=(),
-                 noteheads=None, directions=(), stemless: bool = False, velocity: int = None):
+                 noteheads=None, directions=(), stemless: bool = False, velocity: int = None, accidentals: str | Sequence[str | None] = None):
         assert isinstance(pitches, (list, tuple)) and len(pitches) > 1, "Chord should have multiple notes."
         pitches = [Pitch.from_string(pitch) if isinstance(pitch, str) else pitch for pitch in pitches]
         assert all(isinstance(pitch, Pitch) for pitch in pitches)
@@ -1019,6 +1040,10 @@ class Chord(DurationalObject):
         assert ties in ("start", "continue", "stop", None) or \
                isinstance(ties, (list, tuple)) and len(ties) == len(pitches) and \
                all(x in ("start", "continue", "stop", None) for x in ties)
+
+        assert accidentals in ("natural", "flat", "flat-flat", "sharp", "double-sharp", None) or \
+               isinstance(accidentals, (list, tuple)) and len(accidentals) == len(pitches) and \
+               all(x in ("natural", "flat", "flat-flat", "sharp", "double-sharp", None) for x in accidentals)
 
         note_notations = [[] for _ in range(len(pitches))]
         for notation in (notations if isinstance(notations, (list, tuple)) else (notations, )):
@@ -1037,7 +1062,8 @@ class Chord(DurationalObject):
                  notehead=noteheads if isinstance(noteheads, str) else noteheads[i] if noteheads is not None else None,
                  directions=directions if i == 0 else (),
                  stemless=stemless,
-                 velocity=velocity)
+                 velocity=velocity,
+                 accidental=accidentals if not isinstance(accidentals, (list, tuple)) else accidentals[i])
             for i, pitch in enumerate(pitches)
         )
 
@@ -1159,6 +1185,27 @@ class Chord(DurationalObject):
                 note.ties = value
 
     @property
+    def accidentals(self):
+        """
+        Either a string representing the accidental of all the notes, if all notes have the same accidental, or a tuple representing the accidental of each note individually.
+        """
+        if all(note.accidental == self.notes[0].accidental for note in self.notes[1:]):
+            return self.notes[0].accidental
+        else:
+            return tuple(note.accidental for note in self.notes)
+
+    @accidentals.setter
+    def accidentals(self, value):
+        if isinstance(value, (list, tuple)):
+            assert len(value) == len(self.notes)
+            for i, note in enumerate(self.notes):
+                note.accidental = value[i]
+        else:
+            assert value in ("natural", "flat", "flat-flat", "sharp", "double-sharp", None)
+            for note in self.notes:
+                note.accidental = value
+
+    @property
     def tuplet_bracket(self):
         """
         Whether or not this chord starts or stops a tuplet bracket.
@@ -1212,12 +1259,13 @@ class GraceNote(Note):
     :param stemless: see :class:`Note`
     :param slashed: whether or not this grace note is rendered with a slash.
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
+    :param accidental: see :class:`Note`
     """
     def __init__(self, pitch: Pitch | str, duration: Duration | str | float, ties: str = None,
                  notations=(), articulations=(), notehead: Notehead | str = None,
-                 directions: Sequence[Direction] = (), stemless: bool = False, slashed=False, velocity: int = None):
+                 directions: Sequence[Direction] = (), stemless: bool = False, slashed=False, velocity: int = None, accidental: str = None):
         super().__init__(pitch,  duration, ties=ties, notations=notations, articulations=articulations,
-                         notehead=notehead, directions=directions, stemless=stemless, velocity=velocity)
+                         notehead=notehead, directions=directions, stemless=stemless, velocity=velocity, accidental=accidental)
         self.is_grace = True
         self.slashed = slashed
 
@@ -1242,13 +1290,14 @@ class GraceChord(Chord):
     :param stemless: see :class:`Chord`
     :param slashed: whether or not this grace chord is rendered with a slash.
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
+    :param accidentals: see :class:`Chord`
     """
 
     def __init__(self, pitches: Sequence[Pitch | str], duration: Duration | str | float,
                  ties: str | Sequence[str | None] = None, notations=(), articulations=(),
-                 noteheads=None, directions=(), stemless: bool = False, slashed=False, velocity: int = None):
+                 noteheads=None, directions=(), stemless: bool = False, slashed=False, velocity: int = None, accidentals: str | Sequence[str | None] = None):
         super().__init__(pitches, duration, ties=ties, notations=notations, articulations=articulations,
-                         noteheads=noteheads, directions=directions, stemless=stemless, velocity=velocity)
+                         noteheads=noteheads, directions=directions, stemless=stemless, velocity=velocity, accidentals=accidentals)
         for note in self.notes:
             note.is_grace = True
             note.slashed = slashed
