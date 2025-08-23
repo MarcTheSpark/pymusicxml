@@ -588,6 +588,52 @@ class BarRestDuration(DurationalObject):
         return BarRest(self).wrap_as_score()
 
 
+class Lyric(MusicXMLComponent):
+
+    """
+    Class representing a lyric.
+
+    :param text: text of the lyric
+    :param syllabic: syllabic part of the lyric: can be single, begin, middle, end
+    :ivar text: text of the lyric
+    :ivar syllabic: syllabic part of the lyric
+    """
+
+    def __init__(self, text: str, syllabic: str = 'single'):
+        self.text = text
+        self.syllabic = syllabic
+
+    @classmethod
+    def from_string(cls, text: str):
+        """
+        Constructs Lyric from text assuming single syllable
+
+        :param text: any single syllable text, corresponding to a note
+        :return: a Lyric
+        """
+        return cls(text)
+
+    def render(self) -> Sequence[ElementTree.Element]:
+        lyric_element = ElementTree.Element("lyric")
+        syllabic_el = ElementTree.Element("syllabic")
+        syllabic_el.text = self.syllabic
+        text_el = ElementTree.Element("text")
+        text_el.text = self.text
+        lyric_element.append(syllabic_el)
+        lyric_element.append(text_el)
+        return lyric_element,
+
+    def wrap_as_score(self) -> Score:
+        return Note("c4",1.0,self).wrap_as_score()
+
+    def __eq__(self, other):
+        if not isinstance(other, Lyric):
+            return False
+        return self.text == other.text and self.syllabic == other.syllabic
+
+    def __repr__(self):
+        return "Lyric(\"{}\", {}{})".format(self.text, self.syllabic)
+
 # ---------------------------------------- Note class and all it variations -----------------------------------------
 
 
@@ -597,6 +643,7 @@ class _XMLNote(DurationalObject):
 
     :param pitch: a Pitch, or None to indicate a rest, or "bar rest" to indicate that it's a bar rest
     :param duration: a Duration, or just a float representing the bar length in quarter in the case of "bar rest"
+    :param lyric: a Lyric, or None
     :param ties: "start", "continue", "stop", or None
     :param notations: either a single notation, or a list of notations that will populate the musicXML "notations" tag
     :param articulations: either a single articulations or a list of articulations that will populate the musicXML
@@ -616,7 +663,7 @@ class _XMLNote(DurationalObject):
     :param velocity: a note velocity which gets passed along and used for playback by many applications
     """
 
-    def __init__(self, pitch, duration, ties=None, notations=(), articulations=(), notehead=None, beams=None,
+    def __init__(self, pitch, duration, lyric=None, ties=None, notations=(), articulations=(), notehead=None, beams=None,
                  directions=(), stemless=False, grace=False, is_chord_member=False, voice=None, staff=None,
                  velocity=None):
 
@@ -624,6 +671,8 @@ class _XMLNote(DurationalObject):
         self.pitch = pitch
         assert isinstance(duration, (Duration, BarRestDuration))
         self.duration = duration
+        assert not (lyric and pitch is None) # can't have lyric without pitch
+        self.lyric = lyric
         assert ties in ("start", "continue", "stop", None)
         self.ties = ties
         self.notations = list(notations) if isinstance(notations, (list, tuple)) else [notations]
@@ -702,6 +751,9 @@ class _XMLNote(DurationalObject):
                 if self.is_chord_member:
                     note_element.append(ElementTree.Element("chord"))
                 note_element.extend(self.pitch.render())
+
+                if not self.lyric is None:
+                    note_element.extend(self.lyric.render())
 
             duration_elements = self.duration.render()
 
@@ -804,6 +856,7 @@ class Note(_XMLNote):
     :param pitch: either a Pitch object or a string to parse as a pitch (see :func:`Pitch.from_string`)
     :param duration: either a :class:`Duration` object, a string to parse as a duration (see
         :func:`Duration.from_string`), or a number of quarter notes.
+    :param pitch: either a Lyric object or a string to parse as a lyric (see :func:`Lyric.from_string`)
     :param ties: one of "start", "continue", "stop", None
     :param notations: Either a single notation, or a list of notations that will populate the musicXML "notations" tag.
         Each is either a :class:`Notation` object, an :class:`ElementTree.Element` object, or a string that will be
@@ -819,7 +872,7 @@ class Note(_XMLNote):
     :param velocity: a note velocity (0-127) which gets passed along and used for playback by many applications
     """
 
-    def __init__(self, pitch: Pitch | str, duration: Duration | str | float, ties: str = None,
+    def __init__(self, pitch: Pitch | str, duration: Duration | str | float, lyric: Lyric | str = None,ties: str = None,
                  notations=(), articulations=(), notehead: Notehead | str = None,
                  directions: Sequence[Direction] = (), stemless: bool = False, velocity: int = None):
 
@@ -832,11 +885,15 @@ class Note(_XMLNote):
         elif isinstance(duration, Real):
             duration = Duration.from_written_length(duration)
 
+        if isinstance(lyric, str):
+            lyric = Lyric.from_string(lyric)
+        assert isinstance(lyric, Lyric) or lyric is None
+
         if ties not in ("start", "continue", "stop", None):
             raise ValueError('Ties argument must be one of ("start", "continue", "stop", None)')
 
         assert isinstance(duration, Duration)
-        super().__init__(pitch, duration, ties=ties, notations=notations, articulations=articulations,
+        super().__init__(pitch, duration, lyric, ties=ties, notations=notations, articulations=articulations,
                          notehead=notehead, directions=directions, stemless=stemless, velocity=velocity)
 
     @property
