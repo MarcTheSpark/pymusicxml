@@ -899,7 +899,7 @@ class Notehead(MusicXMLComponent):
                        "circle dot", "left triangle", "rectangle", "do", "re", "mi", "fa", "fa up", "so",
                        "la", "ti",  "none"]
 
-    def __init__(self, notehead_name: str, filled: bool = None):
+    def __init__(self, notehead_name: str, filled: bool = None, **other_attrs):
         notehead_name = notehead_name.strip().lower()
         if "filled " in notehead_name:
             filled = "yes"
@@ -911,9 +911,12 @@ class Notehead(MusicXMLComponent):
         self.notehead_name = notehead_name
         assert filled in (None, "yes", "no", True, False)
         self.filled = "yes" if filled in ("yes", True) else "no" if filled in ("no", False) else None
+        self.other_attrs = other_attrs
 
     def render(self) -> Sequence[ElementTree.Element]:
-        notehead_el = ElementTree.Element("notehead", {"filled": self.filled} if self.filled is not None else {})
+        notehead_el = ElementTree.Element("notehead",
+                                          {"filled": self.filled, **self.other_attrs}
+                                          if self.filled is not None else self.other_attrs)
         notehead_el.text = self.notehead_name
         return notehead_el,
 
