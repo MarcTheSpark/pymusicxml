@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymusicxml"
+version = "0.5.7"
+description = "A simple python library for exporting MusicXML."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+
+authors = [
+    { name = "Marc Evanstein", email = "marc@marcevanstein.com" }
+]
+
+[project.urls]
+"Source Code" = "https://git.sr.ht/~marcevanstein/pymusicxml"
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
