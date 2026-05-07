@@ -15,7 +15,7 @@ authors = [
 ]
 
 [project.urls]
-"Source Code" = "https://git.sr.ht/~marcevanstein/pymusicxml"
+"Source Code" = "https://github.com/MarcTheSpark/pymusicxml"
 
 [tool.setuptools]
 zip-safe = false
