@@ -22,6 +22,11 @@ from enum import Enum
 
 
 class LineEnd(Enum):
+    """
+    The hook drawn at the end of a bracket or dashed line spanner: a vertical hook pointing up or down,
+    hooks at both ends, an arrowhead, or no hook at all.
+    """
+
     up = "up"
     down = "down"
     both = "both"
@@ -30,6 +35,8 @@ class LineEnd(Enum):
 
 
 class LineType(Enum):
+    """The style of line drawn by a spanner, such as a bracket or a dashed line."""
+
     solid = "solid"
     dashed = "dashed"
     dotted = "dotted"
@@ -37,21 +44,32 @@ class LineType(Enum):
 
 
 class HairpinType(Enum):
+    """Whether a hairpin spanner opens outward (crescendo) or closes inward (diminuendo)."""
+
     crescendo = "crescendo"
     diminuendo = "diminuendo"
 
 
 class StaffPlacement(Enum):
+    """Whether a direction or notation is placed above or below the staff."""
+
     above = "above"
     below = "below"
 
 
 class ArpeggiationDirection(Enum):
+    """The direction in which an arpeggiated chord is rolled."""
+
     up = "up"
     down = "down"
 
 
 class AccidentalType(Enum):
+    """
+    An accidental, as used in a :class:`~pymusicxml.score_components.NonTraditionalKeySignature`. Note that
+    `flat_flat` and `double_flat` are two names for the same MusicXML value.
+    """
+
     flat_flat = "flat-flat"
     double_flat = "flat-flat"
     flat = "flat"

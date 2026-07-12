@@ -176,6 +176,7 @@ class Degree:
         self.print_object = print_object
 
     def render(self) -> Sequence[ElementTree.Element]:
+        """Renders this degree to a tuple containing a single <degree> ElementTree.Element."""
         degree_element = ElementTree.Element("degree", {"print-object": "yes" if self.print_object else "no"})
         ElementTree.SubElement(degree_element, "degree-value").text = str(self.value)
         ElementTree.SubElement(degree_element, "degree-alter").text = str(self.alter)

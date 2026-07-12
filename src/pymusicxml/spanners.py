@@ -31,21 +31,21 @@ from pymusicxml import Direction
 
 
 class StopBracket(Direction, StopNumberedSpanner):
+    """
+    End of a bracket spanner.
+
+    :param label: this should correspond to the label of the associated :class:`StartBracket`
+    :param line_end: Type of hook/arrow at the end of this bracket
+    :param end_length: Length of the hock at the end of this bracket
+    :param text: Any text to attach to the end of this bracket
+    :param placement: Where to place the direction in relation to the staff ("above" or "below")
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    """
 
     def __init__(self, label: Any = 1, line_end: str | LineEnd = None, end_length: Real = None,
                  text: str | TextAnnotation = None, placement: str | StaffPlacement = "above",
                  voice: int = 1, staff: int = None):
-        """
-        End of a bracket spanner.
-
-        :param label: this should correspond to the label of the associated :class:`StartBracket`
-        :param line_end: Type of hook/arrow at the end of this bracket
-        :param end_length: Length of the hock at the end of this bracket
-        :param text: Any text to attach to the end of this bracket
-        :param placement: Where to place the direction in relation to the staff ("above" or "below")
-        :param voice: Which voice to attach to
-        :param staff: Which staff to attach to if the part has multiple staves
-        """
         StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
         self.line_end = LineEnd(line_end) if isinstance(line_end, str) else line_end

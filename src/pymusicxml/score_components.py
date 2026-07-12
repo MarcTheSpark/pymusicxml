@@ -1584,17 +1584,25 @@ class TraditionalKeySignature(KeySignature):
 
 
 class NonTraditionalKeySignature(KeySignature):
+    """
+    A non-traditional key signature. See https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/key/.
+
+    :param step_alteration_tuples: a list of (step, alteration) or (step, alteration, accidental) tuples, each of
+        which corresponds to a set of <key-step>, <key-alter>, and optionally <key-accidental> tags.
+    """
 
     def __init__(self, *step_alteration_tuples):
-        """
-        A non-traditional key signature. See https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/key/.
-
-        :param step_alteration_tuples: a list of (step, alteration) or (step, alteration, accidental) tuples, each of
-            which corresponds to a set of <key-step>, <key-alter>, and optionally <key-accidental> tags.
-        """
         self.step_alteration_tuples = list(step_alteration_tuples)
 
     def add_alteration(self, step, alteration, accidental=None):
+        """
+        Add another altered step to this key signature.
+
+        :param step: the step being altered, e.g. "B"
+        :param alteration: how much to alter it by, in half steps, e.g. -1 for a flat
+        :param accidental: which accidental to draw; inferred from the alteration if left as None.
+            (See :class:`~pymusicxml.enums.AccidentalType`.)
+        """
         self.step_alteration_tuples.append((step, alteration, accidental) if accidental is not None
                                            else (step, alteration))
 
