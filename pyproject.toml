@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymusicxml"
-version = "0.5.7"
+version = "0.5.8"
 description = "A simple python library for exporting MusicXML."
 readme = "README.md"
 requires-python = ">=3.12"
