@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Notes now write an explicit `<accidental>` glyph, not just the `<alter>` pitch, so sharps,
+  flats, and naturals show up in readers that don't infer them. Which accidental is drawn
+  follows standard measure spelling: repeats within a measure are hidden, and the key
+  signature and ties into the note are respected. (This also paves the way for a possible
+  future feature of allowing different accidental spelling policies, such as showing accidentals
+  on every note regardless of context.)
+- Tied notes spanning three or more segments now emit their tie elements stop-before-start,
+  fixing readers that drew one long tie across the whole group instead of separate ties.
+
 ## [0.5.8] - 2026-07-12
 
 A documentation release. There are no functional changes: every public class and function

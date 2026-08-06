@@ -244,6 +244,13 @@ class DurationalObject(MusicXMLComponent, ABC):
 # --------------------------------------------- Pitch and Duration -----------------------------------------------
 
 
+# The drawn accidental glyph for a given pitch alteration (in half steps).
+_ALTERATION_TO_ACCIDENTAL = {
+    -2: "flat-flat", -1.5: "three-quarters-flat", -1: "flat", -0.5: "quarter-flat",
+    0: "natural", 0.5: "quarter-sharp", 1: "sharp", 1.5: "three-quarters-sharp", 2: "double-sharp",
+}
+
+
 class Pitch(MusicXMLComponent):
 
     """
@@ -308,6 +315,12 @@ class Pitch(MusicXMLComponent):
         pitch_element.append(alter_el)
         pitch_element.append(octave_el)
         return pitch_element,
+
+    @property
+    def accidental_name(self) -> str | None:
+        """The MusicXML accidental for this pitch's alteration, or None if it can't be
+        drawn with a standard accidental (e.g. a fine microtone)."""
+        return _ALTERATION_TO_ACCIDENTAL.get(self.alteration)
 
     def wrap_as_score(self) -> Score:
         return Note(self, 1.0).wrap_as_score()
@@ -640,6 +653,9 @@ class _XMLNote(DurationalObject):
         self.voice = voice
         self.staff = staff
         self.velocity = velocity
+        # "auto" draws an accidental for any altered pitch; a containing Measure overrides
+        # this with proper measure-context spelling. None draws no accidental.
+        self.display_accidental = "auto"
 
     @property
     def true_length(self) -> float:
@@ -675,6 +691,14 @@ class _XMLNote(DurationalObject):
         Returns the number of beams needed to represent this note's duration.
         """
         return 0 if self.pitch is None else self.duration.num_beams()
+
+    def _accidental_to_render(self) -> str | None:
+        """The accidental glyph to draw for this note, or None."""
+        if not isinstance(self.pitch, Pitch):
+            return None
+        if self.display_accidental == "auto":
+            return self.pitch.accidental_name if self.pitch.alteration != 0 else None
+        return self.display_accidental
 
     def render(self) -> Sequence[ElementTree.Element]:
         note_element = ElementTree.Element(
@@ -712,16 +736,27 @@ class _XMLNote(DurationalObject):
             # for some reason, the tie element and the voice are generally sandwiched in here
 
             if self.ties is not None:
-                if self.ties.lower() == "start" or self.ties.lower() == "continue":
-                    note_element.append(ElementTree.Element("tie", {"type": "start"}))
+                # stop before start, so a "continue" note closes its incoming tie before opening the next
                 if self.ties.lower() == "stop" or self.ties.lower() == "continue":
                     note_element.append(ElementTree.Element("tie", {"type": "stop"}))
+                if self.ties.lower() == "start" or self.ties.lower() == "continue":
+                    note_element.append(ElementTree.Element("tie", {"type": "start"}))
 
             if self.voice is not None:
                 ElementTree.SubElement(note_element, "voice").text = str(self.voice)
 
-            # these are the note type and any dot tags
-            note_element.extend(duration_elements[1:])
+            # We now need to add the note type, dots, accidental, and time-modification, in that order
+            # (the accidental must precede time-modification per the MusicXML schema)
+            # duration_elements[1:] contains the note type, dots, and possibly time-modification
+            tail = list(duration_elements[1:])
+            accidental = self._accidental_to_render()
+            if accidental is not None:
+                acc_el = ElementTree.Element("accidental")
+                acc_el.text = accidental
+                # if there's a time-modification at the end, we insert before it, otherwise insert at the end
+                before = len(tail) - 1 if tail and tail[-1].tag == "time-modification" else len(tail)
+                tail.insert(before, acc_el)
+            note_element.extend(tail)
 
         # --------------- stem / notehead -------------
 
@@ -740,10 +775,11 @@ class _XMLNote(DurationalObject):
 
         if self.pitch is not None:
             if self.ties is not None:
-                if self.ties.lower() == "start" or self.ties.lower() == "continue":
-                    self.notations.append(ElementTree.Element("tied", {"type": "start"}))
+                # stop before start, so a "continue" note closes its incoming tie before opening the next
                 if self.ties.lower() == "stop" or self.ties.lower() == "continue":
                     self.notations.append(ElementTree.Element("tied", {"type": "stop"}))
+                if self.ties.lower() == "start" or self.ties.lower() == "continue":
+                    self.notations.append(ElementTree.Element("tied", {"type": "start"}))
             for beam_num in self.beams:
                 beam_text = self.beams[beam_num]
                 beam_el = ElementTree.Element("beam", {"number": str(beam_num)})
@@ -1554,6 +1590,10 @@ class KeySignature(MusicXMLComponent):
     def render(self) -> Sequence[ElementTree.Element]:
         pass
 
+    def step_alterations(self) -> dict:
+        """Map of step letter -> alteration (in half steps) implied by this key."""
+        return {}
+
     def wrap_as_score(self) -> Score:
         return Measure([BarRest(4)], time_signature=(4, 4), clef="treble", key=self).wrap_as_score()
 
@@ -1581,6 +1621,16 @@ class TraditionalKeySignature(KeySignature):
         if self.mode is not None:
             ElementTree.SubElement(key_el, "mode").text = str(self.mode)
         return key_el,
+
+    _SHARP_ORDER = "FCGDAEB"
+    _FLAT_ORDER = "BEADGCF"
+
+    def step_alterations(self) -> dict:
+        if self.fifths > 0:
+            return {step: 1 for step in self._SHARP_ORDER[:self.fifths]}
+        if self.fifths < 0:
+            return {step: -1 for step in self._FLAT_ORDER[:-self.fifths]}
+        return {}
 
 
 class NonTraditionalKeySignature(KeySignature):
@@ -1614,6 +1664,9 @@ class NonTraditionalKeySignature(KeySignature):
             if len(accidental) > 0:
                 ElementTree.SubElement(key_el, "key-accidental").text = str(accidental[0])
         return key_el,
+
+    def step_alterations(self) -> dict:
+        return {str(t[0]).upper(): t[1] for t in self.step_alteration_tuples}
 
 
 class Measure(MusicXMLComponent, MusicXMLContainer):
@@ -1792,8 +1845,34 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
         return _least_common_multiple(*[Fraction(displacement).limit_denominator(256).denominator
                                         for _, displacement in self.directions_with_displacements])
 
+    def _assign_display_accidentals(self) -> None:
+        """
+        Decide which notes draw an accidental, using the standard measure rule: an
+        accidental shows when a pitch's alteration differs from what is already in effect
+        (from the key signature, or an earlier accidental) for that step and octave. Tied
+        continuations never re-draw one.
+        """
+        key_alterations = KeySignature.parse(self.key).step_alterations() if self.key is not None else {}
+        in_effect = {}   # (staff, step, octave) -> alteration currently sounding
+        for leaf in self.leaves():
+            notes = leaf.notes if isinstance(leaf, Chord) else (leaf,)
+            for note in notes:
+                pitch = getattr(note, "pitch", None)
+                if not isinstance(pitch, Pitch):
+                    continue
+                context_key = (note.staff, pitch.step, pitch.octave)
+                current = in_effect.get(context_key, key_alterations.get(pitch.step.upper(), 0))
+                if note.ties in ("stop", "continue"):
+                    note.display_accidental = None
+                elif pitch.alteration != current:
+                    note.display_accidental = pitch.accidental_name
+                else:
+                    note.display_accidental = None
+                in_effect[context_key] = pitch.alteration
+
     def render(self) -> Sequence[ElementTree.Element]:
         self._set_leaf_voices()
+        self._assign_display_accidentals()
 
         measure_element = ElementTree.Element("measure", {"number": str(self.number)})
 
