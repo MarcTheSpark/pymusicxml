@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on every note regardless of context.)
 - Tied notes spanning three or more segments now emit their tie elements stop-before-start,
   fixing readers that drew one long tie across the whole group instead of separate ties.
+- A note tied across a barline now carries its accidental as a hidden `<accidental>`, so
+  readers that resolve pitch from the written accidental keep the tie instead of dropping it.
 
 ## [0.5.8] - 2026-07-12
 

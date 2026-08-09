@@ -656,6 +656,9 @@ class _XMLNote(DurationalObject):
         # "auto" draws an accidental for any altered pitch; a containing Measure overrides
         # this with proper measure-context spelling. None draws no accidental.
         self.display_accidental = "auto"
+        # an accidental glyph to emit invisibly (print-object="no"); set by a containing
+        # Measure on notes tied across a barline, whose sounding accidental is otherwise lost.
+        self.hidden_accidental = None
 
     @property
     def true_length(self) -> float:
@@ -753,6 +756,12 @@ class _XMLNote(DurationalObject):
             if accidental is not None:
                 acc_el = ElementTree.Element("accidental")
                 acc_el.text = accidental
+            elif self.hidden_accidental is not None:
+                acc_el = ElementTree.Element("accidental", {"print-object": "no"})
+                acc_el.text = self.hidden_accidental
+            else:
+                acc_el = None
+            if acc_el is not None:
                 # if there's a time-modification at the end, we insert before it, otherwise insert at the end
                 before = len(tail) - 1 if tail and tail[-1].tag == "time-modification" else len(tail)
                 tail.insert(before, acc_el)
@@ -1862,8 +1871,14 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                     continue
                 context_key = (note.staff, pitch.step, pitch.octave)
                 current = in_effect.get(context_key, key_alterations.get(pitch.step.upper(), 0))
+                note.hidden_accidental = None
                 if note.ties in ("stop", "continue"):
                     note.display_accidental = None
+                    # a note tied across a barline draws no accidental, but the barline has
+                    # cleared the one in effect. If it isn't restored by the key signature,
+                    # emit it invisibly so readers still resolve the pitch (and keep the tie).
+                    if context_key not in in_effect and pitch.alteration != current:
+                        note.hidden_accidental = pitch.accidental_name
                 elif pitch.alteration != current:
                     note.display_accidental = pitch.accidental_name
                 else:
