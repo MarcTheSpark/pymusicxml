@@ -80,8 +80,9 @@ class TextAnnotation(Direction):
         self.text_properties = kwargs
         if font_size is not None:
             self.text_properties["font-size"] = font_size
-        if italic:
-            self.text_properties["font-style"] = "italic"
+        # Set italicization if present, and default to normal if no style is given,
+        # since some renderers italicize <words> by default
+        self.text_properties.setdefault("font-style", "italic" if italic else "normal")
         if bold:
             self.text_properties["font-weight"] = "bold"
 

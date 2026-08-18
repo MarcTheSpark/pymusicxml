@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Non-italic text annotations now write `font-style="normal"` explicitly, so readers that
+  italicize `<words>` by default (e.g. Verovio) render them upright as intended.
 - Notes now write an explicit `<accidental>` glyph, not just the `<alter>` pitch, so sharps,
   flats, and naturals show up in readers that don't infer them. Which accidental is drawn
   follows standard measure spelling: repeats within a measure are hidden, and the key
