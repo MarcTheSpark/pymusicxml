@@ -33,7 +33,7 @@ from pymusicxml.notations import StartGliss, StopGliss, StartMultiGliss, StopMul
     TrillMark, Schleifer, Tremolo
 from pymusicxml.directions import Harmony, Degree, MetronomeMark, TextAnnotation, Dynamic
 from pymusicxml.spanners import StopBracket, StartBracket, StopDashes, StartDashes, StopTrill, StartTrill, StopPedal, \
-    ChangePedal, StartPedal, StopHairpin, StartHairpin, StopSlur, StartSlur
+    ChangePedal, StartPedal, StopHairpin, StartHairpin, StopSlur, StartSlur, StartOctaveLine, StopOctaveLine
 from pymusicxml.enums import *
 import importlib.metadata
 

@@ -203,6 +203,78 @@ class StartDashes(Direction, StartNumberedSpanner):
         return direction,
 
 
+class StopOctaveLine(Direction, StopNumberedSpanner):
+
+    """
+    End of an octave-shift line (e.g. the end of an "8va" or "8vb").
+
+    :param label: this should correspond to the label of the associated :class:`StartOctaveLine`
+    :param size: octave-shift size in scale steps: 8 (one octave), 15 (two), or 22 (three). Should match
+        the associated :class:`StartOctaveLine`.
+    :param placement: Where to place the direction in relation to the staff ("above" or "below")
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    """
+
+    def __init__(self, label: Any = 1, size: int = 8, placement: str | StaffPlacement = "above",
+                 voice: int = 1, staff: int = None):
+        StopNumberedSpanner.__init__(self, label)
+        Direction.__init__(self, placement, voice, staff)
+        self.size = size
+
+    def render_direction_type(self) -> Sequence[ElementTree.Element]:
+        direction_type_el = ElementTree.Element("direction-type")
+        ElementTree.SubElement(direction_type_el, "octave-shift",
+                               {"type": "stop", "size": str(self.size), "number": str(self.label)})
+        return direction_type_el,
+
+
+class StartOctaveLine(Direction, StartNumberedSpanner):
+
+    """
+    Start of an octave-shift line, i.e. an "8va"/"8vb"/"15ma" bracket with a dashed line and terminal hook.
+
+    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
+        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
+        a string). These labels are then converted to numbers on export.
+    :param octaves: how many octaves, and in which direction, the notes are displaced. Positive means the notes
+        sound higher than written (8va, drawn above): 1 = 8va, 2 = 15ma, 3 = 22ma. Negative means the notes sound
+        lower than written (8vb, drawn below). (Note that the resulting musicxml looks backwards because it describes
+        the modification of the written notes relative to how they would be written with no ottava.)
+    :param dash_length: Length of the dashes (in tenths). (Note: some renderers, e.g. verovio, ignore this.)
+    :param space_length: Length of the space between dashes (in tenths).
+    :param placement: Where to place the direction in relation to the staff ("above" or "below")
+    :param voice: Which voice to attach to
+    :param staff: Which staff to attach to if the part has multiple staves
+    """
+
+    STOP_TYPE = StopOctaveLine
+
+    def __init__(self, label: Any = 1, octaves: int = 1, dash_length: Real = None, space_length: Real = None,
+                 placement: str | StaffPlacement = "above", voice: int = 1, staff: int = None):
+        StartNumberedSpanner.__init__(self, label)
+        Direction.__init__(self, placement, voice, staff)
+        self.octaves = octaves
+        self.dash_length = dash_length
+        self.space_length = space_length
+
+    @property
+    def size(self) -> int:
+        return {1: 8, 2: 15, 3: 22}[abs(self.octaves)]
+
+    def render_direction_type(self) -> Sequence[ElementTree.Element]:
+        direction_type_el = ElementTree.Element("direction-type")
+        # In MusicXML, "down" displaces pitches down to notate them, i.e. the 8va-alta drawn above the staff.
+        octave_dict = {"type": "down" if self.octaves > 0 else "up",
+                       "size": str(self.size), "number": str(self.label)}
+        if self.dash_length is not None:
+            octave_dict["dash-length"] = str(self.dash_length)
+        if self.space_length is not None:
+            octave_dict["space-length"] = str(self.space_length)
+        ElementTree.SubElement(direction_type_el, "octave-shift", octave_dict)
+        return direction_type_el,
+
+
 class StopTrill(Notation, StopNumberedSpanner):
     """
     Stops a trill spanner with a wavy line.

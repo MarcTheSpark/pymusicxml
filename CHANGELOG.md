@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `StartOctaveLine` / `StopOctaveLine` spanners, which emit a proper `<octave-shift>` element (an "8va"/"8vb"/
+  "15ma" line with a dashed line and terminal hook). Renderers draw these natively, unlike a generic dashed
+  `<bracket>` faking an octave sign.
+
 ### Fixed
 
 - Non-italic text annotations now write `font-style="normal"` explicitly, so readers that
