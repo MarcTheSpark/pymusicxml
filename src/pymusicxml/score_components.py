@@ -2267,7 +2267,14 @@ class Score(MusicXMLComponent, MusicXMLContainer):
 
 
 class NumberedSpanner(ABC):
-    """Abstract base class for part of a Direction or Notation that spans multiple time-points."""
+    """
+    Abstract base class for part of a Direction or Notation that spans multiple time-points.
+
+    :param label: A label distinguishing this spanner from others of the same type, so that a start and its
+        stop can be paired (a stop's label should match its start's). In the MusicXML standard this is a
+        number from 1 to 6, but pymusicxml allows anything (e.g. a string); labels are converted to numbers
+        on export.
+    """
 
     def __init__(self, label: Any = 1):
         self.label = label

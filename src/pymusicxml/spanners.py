@@ -34,7 +34,7 @@ class StopBracket(Direction, StopNumberedSpanner):
     """
     End of a bracket spanner.
 
-    :param label: this should correspond to the label of the associated :class:`StartBracket`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param line_end: Type of hook/arrow at the end of this bracket
     :param end_length: Length of the hock at the end of this bracket
     :param text: Any text to attach to the end of this bracket
@@ -80,9 +80,7 @@ class StartBracket(Direction, StartNumberedSpanner):
     """
     Start of a bracket spanner.
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param line_end: Type of hook/arrow at the start of this bracket
     :param end_length: Length of the hock at the start of this bracket
     :param text: Any text to attach to the start of this bracket
@@ -134,7 +132,7 @@ class StopDashes(Direction, StopNumberedSpanner):
     """
     End of a dashed spanner (e.g. used by a dashed "cresc." or "dim." marking)
 
-    :param label: this should correspond to the label of the associated :class:`StartDashes`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param text: Any text to attach to the end of this dashed spanner
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     :param voice: Which voice to attach to
@@ -164,9 +162,7 @@ class StartDashes(Direction, StartNumberedSpanner):
     """
     Start of a dashed spanner (e.g. used by a dashed "cresc." or "dim." marking)
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param dash_length: Length of the dashes
     :param space_length: Length of the space between the dashes
     :param text: Any text to attach to the start of this dashed spanner
@@ -208,7 +204,7 @@ class StopOctaveLine(Direction, StopNumberedSpanner):
     """
     End of an octave-shift line (e.g. the end of an "8va" or "8vb").
 
-    :param label: this should correspond to the label of the associated :class:`StartOctaveLine`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param size: octave-shift size in scale steps: 8 (one octave), 15 (two), or 22 (three). Should match
         the associated :class:`StartOctaveLine`.
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -234,9 +230,7 @@ class StartOctaveLine(Direction, StartNumberedSpanner):
     """
     Start of an octave-shift line, i.e. an "8va"/"8vb"/"15ma" bracket with a dashed line and terminal hook.
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param octaves: how many octaves, and in which direction, the notes are displaced. Positive means the notes
         sound higher than written (8va, drawn above): 1 = 8va, 2 = 15ma, 3 = 22ma. Negative means the notes sound
         lower than written (8vb, drawn below). (Note that the resulting musicxml looks backwards because it describes
@@ -279,7 +273,7 @@ class StopTrill(Notation, StopNumberedSpanner):
     """
     Stops a trill spanner with a wavy line.
 
-    :param label: this should correspond to the label of the associated :class:`StartTrill`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     """
 
@@ -298,9 +292,7 @@ class StartTrill(Notation, StartNumberedSpanner):
     """
     Starts a trill spanner with a wavy line.
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     :param accidental: Accidental annotation to go on the trill ("flat-flat", "flat", "natural", "sharp",
         or "double-sharp")
@@ -329,7 +321,7 @@ class StopPedal(Direction, StopNumberedSpanner):
     """
     Stops a sustain pedal spanner.
 
-    :param label: this should correspond to the label of the associated :class:`StartPedal`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param sign: whether or not to include a "*" sign
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -356,7 +348,7 @@ class ChangePedal(Direction, MidNumberedSpanner):
     """
     Pedal change in the middle of a sustain pedal spanner.
 
-    :param label: this should correspond to the label of the associated :class:`StartPedal`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param sign: unclear what this means in the case of a change pedal
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -383,9 +375,7 @@ class StartPedal(Direction, StartNumberedSpanner):
     """
     Start of a sustain pedal spanner.
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     :param sign: whether or not to include a "Ped" sign
     :param line: whether or not to use a line in the pedal marking
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
@@ -415,7 +405,7 @@ class StopHairpin(Direction, StopNumberedSpanner):
     """
     Notation to attach to a note that ends a hairpin
 
-    :param label: this should correspond to the label of the associated :class:`StartHairpin`
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     """
 
     def __init__(self, label: Any = 1, spread: Real = None, placement: str | StaffPlacement = "below",
@@ -438,9 +428,7 @@ class StartHairpin(Direction, StartNumberedSpanner):
     Notation to attach to a note that starts a hairpin
 
     :param hairpin_type: the type of hairpin ("crescendo" or "diminuendo")
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     """
 
     STOP_TYPE = StopHairpin
@@ -470,7 +458,7 @@ class StopSlur(Notation, StopNumberedSpanner):
     """
     Notation to attach to a note that ends a slur
 
-    :param label: this should correspond to the slur label of the associated :class:`StartSlur`.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     """
 
     def render(self) -> Sequence[ElementTree.Element]:
@@ -482,9 +470,7 @@ class StartSlur(Notation, StartNumberedSpanner):
     """
     Notation to attach to a note that starts a slur
 
-    :param label: each spanner is given an label to distinguish it from other spanners of the same type. In the MusicXML
-        standard, this is a number from 1 to 6, but in pymusicxml it is allowed to be anything (including, for instance,
-        a string). These labels are then converted to numbers on export.
+    :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
     """
 
     STOP_TYPE = StopSlur
