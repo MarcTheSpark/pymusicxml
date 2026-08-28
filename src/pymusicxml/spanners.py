@@ -30,6 +30,10 @@ from .directions import TextAnnotation
 from pymusicxml import Direction
 
 
+# octave-shift size in scale steps, keyed by how many octaves the line displaces
+_OCTAVE_SHIFT_SIZE = {1: 8, 2: 15, 3: 22}
+
+
 class StopBracket(Direction, StopNumberedSpanner):
     """
     End of a bracket spanner.
@@ -205,18 +209,22 @@ class StopOctaveLine(Direction, StopNumberedSpanner):
     End of an octave-shift line (e.g. the end of an "8va" or "8vb").
 
     :param label: See :class:`~pymusicxml.score_components.NumberedSpanner`.
-    :param size: octave-shift size in scale steps: 8 (one octave), 15 (two), or 22 (three). Should match
-        the associated :class:`StartOctaveLine`.
+    :param octaves: how many octaves the line displaces; should match the associated :class:`StartOctaveLine`.
+        Only the magnitude matters here (a stop carries no direction): 1 = 8va/8vb, 2 = 15ma/15mb, 3 = 22ma/22mb.
     :param placement: Where to place the direction in relation to the staff ("above" or "below")
     :param voice: Which voice to attach to
     :param staff: Which staff to attach to if the part has multiple staves
     """
 
-    def __init__(self, label: Any = 1, size: int = 8, placement: str | StaffPlacement = "above",
+    def __init__(self, label: Any = 1, octaves: int = 1, placement: str | StaffPlacement = "above",
                  voice: int = 1, staff: int = None):
         StopNumberedSpanner.__init__(self, label)
         Direction.__init__(self, placement, voice, staff)
-        self.size = size
+        self.octaves = octaves
+
+    @property
+    def size(self) -> int:
+        return _OCTAVE_SHIFT_SIZE[abs(self.octaves)]
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
@@ -254,7 +262,7 @@ class StartOctaveLine(Direction, StartNumberedSpanner):
 
     @property
     def size(self) -> int:
-        return {1: 8, 2: 15, 3: 22}[abs(self.octaves)]
+        return _OCTAVE_SHIFT_SIZE[abs(self.octaves)]
 
     def render_direction_type(self) -> Sequence[ElementTree.Element]:
         direction_type_el = ElementTree.Element("direction-type")
