@@ -1,15 +1,13 @@
 # Changelog
 
-> These changelogs are AI-written and human-reviewed, because no one (least of all my wife
-> and kids) wants me wasting my precious time meticulously documenting this shit, useful
-> though it may be.
-
 All notable user-facing changes to pymusicxml are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.6.0] - 2026-09-25
 
 ### Added
 
@@ -31,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixing readers that drew one long tie across the whole group instead of separate ties.
 - A note tied across a barline now carries its accidental as a hidden `<accidental>`, so
   readers that resolve pitch from the written accidental keep the tie instead of dropping it.
+  (Verovio again, grrr...)
 
 ## [0.5.8] - 2026-07-12
 
