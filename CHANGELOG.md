@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A score now uses a single `<divisions>` value throughout, instead of each measure picking its own. Some
+  readers (e.g. Verovio) misplace mid-system clef changes when divisions varies between measures or parts,
+  drawing them partway through the measure rather than at the barline.
+
 ## [0.6.0] - 2026-09-25
 
 ### Added

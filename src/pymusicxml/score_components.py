@@ -1847,6 +1847,28 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                     for direction in element.directions:
                         direction.voice = i + 1
 
+    def _needed_divisions(self) -> int:
+        """
+        Smallest number of divisions per quarter note that renders every leaf (and any independently placed
+        direction) in this measure as an integer duration.
+        """
+        # first get the value needed for the leaves
+        beat_divisions = _least_common_multiple(*[x.min_denominator() for x in self.leaves()])
+        # then try to accommodate the independently placed directions as precisely as possible
+        if len(self.directions_with_displacements) > 0:
+            # ideally we could use the lcm of the beat divisions and the directions divisions
+            ideal_directions_division = self._get_beat_division_for_directions()
+            ideal_divisions = _least_common_multiple(ideal_directions_division, beat_divisions)
+
+            if ideal_divisions <= 1024:
+                beat_divisions = ideal_divisions
+            else:
+                # if that would be super large, though, just double the base division as far as we
+                # can under 1024. We want exact representation for the notes, and sufficiently precise
+                # representation for the directions.
+                beat_divisions *= max(1, 2 ** int(math.log2(1024 / beat_divisions)))
+        return beat_divisions
+
     def _get_beat_division_for_directions(self):
         # determine what beat division is ideal for the independently placed directions
         if len(self.directions_with_displacements) == 0:
@@ -1885,7 +1907,7 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
                     note.display_accidental = None
                 in_effect[context_key] = pitch.alteration
 
-    def render(self) -> Sequence[ElementTree.Element]:
+    def render(self, divisions: int = None) -> Sequence[ElementTree.Element]:
         self._set_leaf_voices()
         self._assign_display_accidentals()
 
@@ -1893,18 +1915,9 @@ class Measure(MusicXMLComponent, MusicXMLContainer):
 
         attributes_el = ElementTree.SubElement(measure_element, "attributes")
 
-        num_beat_divisions = _least_common_multiple(*[x.min_denominator() for x in self.leaves()])
-
-        if len(self.directions_with_displacements) > 0:
-            # if we're using independently placed directions, then we try to find a denominator that accommodates
-            # that as precisely as possible this means
-            ideal_division = _least_common_multiple(self._get_beat_division_for_directions(), num_beat_divisions)
-            if ideal_division <= 1024:
-                num_beat_divisions = ideal_division
-            else:
-                # Just in case the ideal division is totally outrageous, we just multiply the division
-                # by two repeatedly until we are about to go over 1024
-                num_beat_divisions *= max(1, 2 ** int(math.log2(1024 / num_beat_divisions)))
+        # when rendered in isolation, divisions is what this measure needs to represent its own durations
+        # but when rendered as part of a score, the whole score shares one divisions, passed as an arg
+        num_beat_divisions = self._needed_divisions() if divisions is None else divisions
 
         for note in self.leaves():
             note.divisions = num_beat_divisions
@@ -2068,13 +2081,13 @@ class Part(MusicXMLComponent, MusicXMLContainer):
                 if notation_type is None or isinstance(notation, notation_type):
                     yield notation
 
-    def render(self) -> Sequence[ElementTree.Element]:
+    def render(self, divisions: int = None) -> Sequence[ElementTree.Element]:
         part_copy = deepcopy(self)
         Part._validate_spanner_numbers(part_copy)
         part_element = ElementTree.Element("part", {"id": "P{}".format(part_copy.part_id)})
         for i, measure in enumerate(part_copy.measures):
             measure.number = i + 1
-            part_element.extend(measure.render())
+            part_element.extend(measure.render(divisions))
         return part_element,
 
     @staticmethod
@@ -2187,8 +2200,8 @@ class PartGroup(MusicXMLComponent, MusicXMLContainer):
         """
         return self.contents
 
-    def render(self) -> Sequence[ElementTree.Element]:
-        return sum((part.render() for part in self.parts), ())
+    def render(self, divisions: int = None) -> Sequence[ElementTree.Element]:
+        return tuple(element for part in self.parts for element in part.render(divisions))
 
     def render_part_list_entry(self) -> Sequence[ElementTree.Element]:
         """
@@ -2244,8 +2257,19 @@ class Score(MusicXMLComponent, MusicXMLContainer):
             part.part_id = next_id
             next_id += 1
 
+    def _unified_divisions(self) -> int | None:
+        """
+        A single divisions-per-quarter-note value for the whole score -- the least common multiple of what every
+        measure needs. MusicXML allows divisions to vary between measures and parts, but some readers (notably
+        Verovio) then misplace mid-system clef changes, so we keep it uniform throughout, as MuseScore does for
+        example. Returns None for a score with no measures.
+        """
+        needed = [measure._needed_divisions() for part in self.parts for measure in part.measures]
+        return _least_common_multiple(*needed) if needed else None
+
     def render(self) -> Sequence[ElementTree.Element]:
         self._set_part_numbers()
+        divisions = self._unified_divisions()
         score_element = ElementTree.Element("score-partwise")
         work_el = ElementTree.SubElement(score_element, "work")
         if self.title is not None:
@@ -2259,7 +2283,7 @@ class Score(MusicXMLComponent, MusicXMLContainer):
         part_list_el = ElementTree.SubElement(score_element, "part-list")
         for part_or_part_group in self.contents:
             part_list_el.extend(part_or_part_group.render_part_list_entry())
-            score_element.extend(part_or_part_group.render())
+            score_element.extend(part_or_part_group.render(divisions))
         return score_element,
 
     def wrap_as_score(self) -> Score:
